@@ -1,0 +1,133 @@
+---
+title: "Zeitreihenanalyse"
+author: Dieu Linh Pham
+email: Dieu.Pham@Student.HTW-Berlin.de
+date: "`r format(Sys.time(), '%d.%m.%Y')`"
+runtime: shiny_prerendered
+output: learnr::tutorial
+---
+
+```{r setup, include=FALSE}
+require(RAppArmor) 
+library(learnr)
+library(gradethis)
+library(shiny)
+library(ggplot2)
+library(dplyr)
+library(readr)
+
+rmarkdown::find_pandoc(cache = FALSE)
+knitr::opts_chunk$set(echo = FALSE)
+
+gradethis_setup()
+
+```
+
+## Ausgangsproblem
+
+
+#### Das Problem
+
+Stell dir vor, du planst mit zwei Freund:innen eine Reise nach Asien von Anfang August bis Ende September. Jeder hat ein Reiseziel vorgeschlagen – zur Auswahl stehen:
+
+- 🌆 **Hanoi (Vietnam)**
+- 🗼 **Tokio (Japan)**
+- 🏝️ **Manila (Philippinen)**
+
+Das Wetter könnte ein entscheidender Faktor für eure Entscheidung sein. Einer deiner Freund:innen ist besonders empfindlich gegenüber großer Hitze. Um die angenehmste Stadt für eure Reise auszuwählen, möchtest du herausfinden, wie das Wetter in dem Zeitraum voraussichtlich sein wird.
+
+```{r}
+hanoi <- read_csv("hanoi_temp.csv", show_col_types = FALSE)
+
+hanoi <- hanoi %>%
+  select(date, tavg) %>%
+  mutate(date = as.Date(date, format = "%Y%j"),
+         city = "Hanoi") %>%
+  rename(temperature = tavg)
+
+manila <- read_csv("manila_temp.csv", show_col_types = FALSE) %>%
+  select(date, tavg) %>%
+  mutate(date = as.Date(date, format = "%Y%j"),
+         city = "Manila") %>%
+  rename(temperature = tavg)
+
+tokyo <- read_csv("tokyo_temp.csv", show_col_types = FALSE) %>%
+  select(date, tavg) %>%
+  mutate(date = as.Date(date, format = "%Y%j"),
+         city = "Tokyo") %>%
+  rename(temperature = tavg)
+
+# Combine all
+all_temp <- bind_rows(hanoi, manila, tokyo)
+
+```
+
+
+```{r}
+dateRangeInput("datumsbereich", "Zeitraum:",
+               start = min(all_temp$date),
+               end = max(all_temp$date),
+               min = min(all_temp$date),
+               max = max(all_temp$date),
+               format = "dd.mm.yyyy",
+               separator = " bis ")
+```
+
+```{r, context="server"}
+output$temp <- renderPlot({
+  gefilterte_daten <- all_temp %>%
+    filter(date >= input$datumsbereich[1],
+           date <= input$datumsbereich[2])
+  
+  ggplot(gefilterte_daten, aes(x = date, y = temperature, color = city)) +
+    geom_line() +
+    scale_x_date(date_breaks = "1 month", date_labels = "%b %Y") +
+    labs(title = "Durchschnittliche Temperatur in Hanoi, Manila und Tokyo",
+         x = "Datum", y = "Temperatur (°C)", color = "Stadt") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 45, hjust = 1))
+})
+
+
+```
+
+```{r}
+
+plotOutput("temp")
+```
+
+```{r, context="server"}
+output$data_preview <- renderTable({
+  all_temp %>%
+    arrange(desc(date)) %>%   # or arrange(date) for ascending order
+    head(10)                  # show 10 rows (adjust as needed)
+})
+```
+
+```{r}
+h4("🔢 Beispielhafte Temperaturdaten (Vorschau)")
+tableOutput("data_preview")
+```
+Du hast tägliche Temperaturdaten von 2020 bis Juni 2025 für alle 3 Städte. Nun stellst du dir folgende Fragen:
+
+ - Wie sieht das typische Wetter in August und September in jeder Stadt aus?
+ - Welche Stadt zeigt regelmäßige Muster über die Jahre und wo gibt es viele Schwankungen?
+ - Lässt sich eine Vorhersage für dieses Jahr erstellen, basierend auf den vergangenen Daten?
+ - Welche Stadt ist also die beste Wahl für eine angenehme Reisezeit?
+ 
+### 🧠 Lernziel
+
+Ziel dieses Dashboards ist es, dich **spielerisch und interaktiv** mit den Grundlagen der Zeitreihenanalyse vertraut zu machen:
+
+- Was ist eine Zeitreihe?
+- Welche Bestandteile (Trend, Saisonalität, Rauschen) gibt es?
+- Wie kann man einfache Prognosen erstellen?
+- Und: Welche Stadt würdest du empfehlen?
+
+
+## Analysis
+
+
+## Summary
+
+
