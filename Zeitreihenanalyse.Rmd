@@ -1,18 +1,13 @@
 ---
 title: "Zeitreihenanalyse"
-author: "Dieu Linh Pham"
+author: Dieu Linh Pham
 date: "`r format(Sys.time(), '%d.%m.%Y')`"
-output:
-  learnr::tutorial:
-    progressive: true
-runtime: shiny
-email: "Dieu.Pham@Student.HTW-Berlin.de"
-resource_files:
-- renv.lock
+runtime: shiny_prerendered
+output: 
+  learnr::tutorial
 ---
 
-```{r setup, include=FALSE} 
-library(rsconnect)
+```{r setup, include=FALSE}
 library(learnr)
 library(gradethis)
 library(shiny)
@@ -23,13 +18,13 @@ library(plotly)
 library(lubridate)
 library(imputeTS)
 library(tibble)
+library(rsconnect)
 
-if (isTRUE(getOption("tutorial.runtime", "") == "shiny")) {
-  gradethis_setup()
-}
 
 rmarkdown::find_pandoc(cache = FALSE)
 knitr::opts_chunk$set(echo = FALSE)
+
+gradethis_setup()
 
 
 hanoi <- read_csv("hanoi_temp.csv", show_col_types = FALSE)
@@ -74,7 +69,7 @@ hanoi_mit_na <- readr::read_delim("hanoi_w_na_1.csv", delim = ";", show_col_type
 #### Das Problem
 
 
-Stell dir vor, du planst mit zwei Freund:innen eine Reise nach Asien für 2 Monate. Jeder hat ein Reiseziel vorgeschlagen – zur Auswahl stehen:
+Stell dir vor, du planst mit zwei Freund:innen eine Reise nach Asien für 2 Monate. Jeder hat ein Reiseziel vorgeschlagen und zur Auswahl stehen:
 
 - 🌆 **Hanoi (Vietnam)**
 - 🗼 **Tokio (Japan)**
@@ -94,7 +89,7 @@ dateRangeInput("datumsbereich", "Zeitraum:",
                separator = " bis ")
 ```
 
-```{r}
+```{r, context="server"}
 output$temp <- renderPlot({
   gefilterte_daten <- all_temp %>%
     filter(date >= input$datumsbereich[1],
@@ -134,8 +129,8 @@ In nächsten Abschnitte lernst du grundlegende Konzepte der Zeitreihenanalyse un
 
 
 ## Zeitreihe
-Eine Zeitreihe ist eine Sammlung von Beobachtungen, die fortlaufend über die Zeit hinweg erhoben wurden.
-Die Zeitreihenanalyse ist ein spezieller Ansatz zur Untersuchung von Daten, die über einen bestimmten Zeitraum hinweg in gleichmäßigen Abständen erhoben wurden.
+Eine Zeitreihe ist eine Sammlung von Beobachtungen, die fortlaufend über die Zeit hinweg erhoben wurden (Chatfield & Xing, 2019).
+Die Zeitreihenanalyse ist ein spezieller Ansatz zur Untersuchung von Daten, die über einen bestimmten Zeitraum hinweg in gleichmäßigen Abständen erhoben wurden (Jose, 2022).
 
 In diesem Fall analysieren wir eine Zeitreihe von **täglichen Durchschnittstemperaturen** für drei Städte in Asien zwischen Januar 2020 und Juni 2025. Im folgenden Diagramm kannst du selbst auswählen, welche Städte du analysieren möchtest. Beobachte die Linien, erkenne mögliche Muster oder Unterschiede zwischen den Städten:
 
@@ -146,7 +141,7 @@ checkboxGroupInput("stadt_auswahl", "Städte auswählen:",
 
 ```
 
-```{r}
+```{r, context="server"}
 output$temp_city <- renderPlotly({
   gefilterte_daten <- all_temp %>%
     filter(city %in% input$stadt_auswahl)
@@ -178,7 +173,7 @@ question("Sieht es so aus, als ob es ein sich wiederholendes Muster gibt?",
 
 ## Behandlung von fehlenden Werten
 
-Ein häufig auftretendes Problem bei Zeitreihendaten sind fehlende Werte. Sie:
+Ein häufig auftretendes Problem bei Zeitreihendaten sind fehlende Werte. Sie (Ahn et al., 2021):
 
 - verfälschen statistische Eigenschaften,
 
@@ -186,14 +181,14 @@ Ein häufig auftretendes Problem bei Zeitreihendaten sind fehlende Werte. Sie:
 
 - und beeinträchtigen besonders in der Zeitreihenmodellierung die Fähigkeit, zeitliche Abhängigkeiten korrekt zu erfassen.
 
-Dadurch kann die Qualität von Analysen und Prognosen erheblich beeinträchtigt werden.
+Dadurch kann die Qualität von Analysen und Prognosen erheblich beeinträchtigt werden (Ahn et al., 2021).
 
 ___
 FALL 1: fehlende Werte
 
-Die folgende Zeitreihe zeigt die durchschnittliche Temperatur (in °C) von Januar 2025 bis Mai 2025 in Hanoi und enthält bewusst fehlende Werte (NA). 
+Die folgende Zeitreihe zeigt die durchschnittliche Temperatur (in °C) von Januar 2024 bis Mai 2025 in Hanoi und enthält bewusst fehlende Werte (NA). 
 
-```{r}
+```{r, context="server"}
 output$na_hanoi <- renderPlot({
   ggplot(hanoi_mit_na, aes(x = date, y = temperature)) +
     geom_line() +
@@ -208,19 +203,19 @@ plotOutput("na_hanoi")
 ```
 
 
-Zu den einfachen Methoden gehören das Ignorieren der fehlenden Werte, das Löschen unvollständiger Beobachtungen.
+Zu den einfachen Methoden gehören das Ignorieren der fehlenden Werte, das Löschen unvollständiger Beobachtungen (Pratama et al., 2016).
 
 ```{r na_question}
 question("Was passiert, wenn du NA-Zeilen einfach aus einer Zeitreihe entfernst?",
     answer("Es kann zu Verzerrungen in der Analyse führen", correct = TRUE,
-         message = "Richtig! Ignorieren und Löschen zeigen sich oft als ungeeignet, da sie zu Verlusten an Informationsgehalt und einer Verschlechterung der Analyseergebnisse führen können."),
+         message = "Richtig! Ignorieren und Löschen zeigen sich oft als ungeeignet, da sie zu Verlusten an Informationsgehalt und einer Verschlechterung der Analyseergebnisse führen können (Pratama et al., 2016)."),
   answer("Das Löschen verbessert die Genauigkeit", message = "Ganz im Gegenteil — es kann die Genauigkeit verringern."),
   answer("Fehlende Werte beeinflussen Zeitreihenmodelle nicht", message = "Doch – Zeitreihenmodelle setzen oft vollständige Daten voraus."),
   allow_retry = TRUE
 )
 ```
 
-Eine praktikable Lösung stellt die sogenannte Mittelwertimputation dar. Fehlende Werte werden durch einen Gesamtmittelwert ersetzt.
+Eine praktikable Lösung stellt die sogenannte Mittelwertimputation dar. Fehlende Werte werden durch einen Gesamtmittelwert ersetzt (Pratama et al., 2016).
 
 Nutze die Funktion na_mean() aus dem Paket imputeTS um die fehlenden Werte zu ersetzen.
 
@@ -244,15 +239,21 @@ grade_this({
 })
 ```
 
-::: {#na_exercise-hint}
-Benutze nur die Spalte 'temperature'.
-:::
+```{r na_exercise-hint}
+hanoi_filled <- na_mean(hanoi_mit_na$...)
+```
+
+
+```{r na_exercise-solution}
+hanoi_filled <- na_mean(hanoi_mit_na$temperature)
+```
+
 
 ```{r na_question_2}
 question("Was hältst du von der Imputation mit `na_mean()` für Temperatur-Zeitreihen?",
   answer("Sie ist eine gute Wahl, weil sie einfach und schnell ist.", correct = FALSE,
          message = "Nicht ganz, einfache Methoden sind nicht immer passend."),
-  answer("Sie ist ungeeignet, weil sie keine Trends oder Saisonalität berücksichtigt.", correct = TRUE, message = "Richtig! `na_mean()` setzt für alle fehlenden Werte denselben Mittelwert ein. Dadurch wird der natürliche Verlauf der Zeitreihe gestört: die eingefügten Werte folgen weder dem Trend noch den saisonalen Mustern und haben oft alle denselben y-Wert.Das kann die Analyse oder Vorhersage erheblich verfälschen."),
+  answer("Sie ist ungeeignet, weil sie keine Trends oder Saisonalität berücksichtigt.", correct = TRUE, message = "Richtig! `na_mean()` setzt für alle fehlenden Werte denselben Mittelwert ein. Dadurch werden die zeitreihenspezifischen Eigenschaften gestört: die eingefügten Werte folgen weder dem Trend noch den saisonalen Mustern und haben oft alle denselben y-Wert. Das kann die Analyse oder Vorhersage erheblich verfälschen  (Moritz et al., 2015)."),
   answer("Sie erzeugt Zufallswerte und ist deshalb unzuverlässig.", correct = FALSE,
          message = "Nein, `na_mean()` ersetzt NAs durch einen konstanten Mittelwert, nicht zufällig."),
   answer("Sie erhöht die Varianz der Zeitreihe.", correct = FALSE,
@@ -261,16 +262,16 @@ question("Was hältst du von der Imputation mit `na_mean()` für Temperatur-Zeit
 )
 ```
 
-na_mean()
+na_mean() (Moritz et al., 2022) und (Moritz et al., 2015):
+
 - ✅ Sehr einfach und schnell
 - ⚠️ Geringe Genauigkeit bei vielen Zeitreihen
 - 🚫 Keine Berücksichtigung zeitlicher Strukturen
 - 📉 Führt oft zu reduzierter Varianz
 
-Eine andere Methode ist lineare Interpolation. Im ersten Schritt wird die saisonale Komponente von der Zeitreihe getrennt. Anschließend erfolgt die Imputation auf der verbleibenden (nicht-saisonalen) Komponente mittels linearer Interpolation. Danach wird die saisonale Komponente wieder hinzugefügt.
-Diese Methode eignet sich besonders gut für Zeitreihen mit klarer und ausgeprägter Saisonalität.
+Eine andere Methode ist lineare Interpolation. Im ersten Schritt wird die saisonale Komponente von der Zeitreihe getrennt. Anschließend erfolgt die Imputation auf der verbleibenden (nicht-saisonalen) Komponente mittels linearer Interpolation. Danach wird die saisonale Komponente wieder hinzugefügt. Diese Methode eignet sich besonders gut für Zeitreihen mit klarer und ausgeprägter Saisonalität (Moritz et al., 2015).
 
-Die Funktion na_interpolation gehört jedoch zu den Ansätzen, die in der Regel sehr gute Ergebnisse liefern und sich besonders dann eignen, wenn eine genauere Ersetzung fehlender Werte erforderlich ist.
+Die Funktion na_interpolation gehört jedoch zu den Ansätzen, die in der Regel sehr gute Ergebnisse liefern und sich besonders dann eignen, wenn eine genauere Ersetzung fehlender Werte erforderlich ist (Moritz & Bartz-Beielstein, 2017).
 
 Nutze jetzt die Funktion na_interpolation() aus dem Paket imputeTS um die fehlenden Werte zu ersetzen.
 
@@ -294,20 +295,20 @@ grade_this({
 })
 ```
 
-::: {#na_exercise_2-hint}
+```  {r na_exercise_2-hint}
 Benutze nur die Spalte 'temperature'.
-:::
+``` 
 
 ___
 FALL 2: fehlender Zeitstempel
 
 Sieh dir die Zeitreihe unten genau an und zoome hinein, um zu überprüfen, ob einzelne Zeitpunkte in der Datenreihe fehlen. In der Tabelle rechts siehst du einen Auszug der Originaldaten. Dort kannst du erkennen, welche Datenpunkte existieren und indirekt auch sehen, welche Tage vollständig fehlen.
 
-```{r}
+```{r, context="server"}
 output$zeitna_hanoi <- renderPlotly({
   p <- ggplot(hanoi_mit_zeitna, aes(x = date, y = temperature)) +
     geom_line() +
-    labs(title = "Temperatur-Zeitreihe mit NA",
+    labs(title = "Temperatur-Zeitreihe mit fehlenden Zeitstempeln",
          x = "Datum", y = "Temperatur (°C)") +
     theme_minimal()
   
@@ -315,7 +316,7 @@ output$zeitna_hanoi <- renderPlotly({
 })
 ```
 
-```{r}
+```{r, context="server"}
 output$na_table_hanoi <- renderTable({
    hanoi_mit_zeitna %>%
     mutate(date = format(date, "%d.%m.%Y")) %>%
@@ -334,9 +335,9 @@ fluidRow(
 )
 ```
 
-In R kann man mit dem Paket tibble eine vollständige Zeitachse erstellen (z.B. mit seq() für tägliche Daten) und diese anschließend per left_join() mit der ursprünglichen Zeitreihe verbinden. 
+In R kann man mit dem Paket tibble (Müller & Wickham, 2025) eine vollständige Zeitachse erstellen (z.B. mit seq() für tägliche Daten) und diese anschließend per left_join() mit der ursprünglichen Zeitreihe verbinden. 
 
-Führe einfach den folgenden Code aus, um zu sehen, wie die fehlenden Zeitpunkte in der Zeitreihe ergänzt wurden. Führe den folgenden Code aus, um zu sehen, wie die fehlenden Zeitpunkte in der Zeitreihe ergänzt wurden.
+Führe einfach den folgenden Code aus, um zu sehen, wie die fehlenden Zeitpunkte in der Zeitreihe ergänzt wurden.
 ```{r na_exercise_3, exercise=TRUE}
 full_dates <- tibble(date = seq(min(hanoi_mit_zeitna$date),
                                 max(hanoi_mit_zeitna$date),
@@ -356,7 +357,7 @@ ggplot(hanoi_fixed, aes(x = date, y = temperature)) +
 So werden fehlende Zeitpunkte, die im Originaldatensatz vollständig gefehlt haben, wieder eingefügt und mit NA markiert. Anschließend können die entstandenen NA-Werte mit den oben genannten Imputationsmethoden aufgefüllt werden.
 
 ## Komponenten einer Zeitreihe
-Zeitreihen bestehen oft aus folgenden Komponenten:
+Zeitreihen bestehen oft aus folgenden Komponenten (Dagum & Bianconcini, 2016):
 
 - 📈 **Trend** – langfristige Entwicklung der Werte über einen längeren Zeitraum (steigen, fallen oder gleich bleiben)
 - 🔁 **Saisonale Schwankung** – regelmäßige Muster innerhalb eines Jahres, z.B. durch Jahreszeiten oder Feiertage
@@ -364,27 +365,22 @@ Zeitreihen bestehen oft aus folgenden Komponenten:
 - 🎲 **Zufälliges Rauschen** – kleine Einflüsse, die ständig auftreten
 
 
-Die Unterscheidung zwischen Trend und Zyklus ist bis zu einem gewissen Grad künstlich, daher fassen die meisten Zerlegungsverfahren diese beiden Komponenten zu einer einzigen zusammen. Die wird in der Literatur häufig als Trend-Zyklus Komponente bezeichnet und in der grafischen Zerlegung der Zeitreihe erscheint die Komponente als Trend.
+Die Unterscheidung zwischen Trend und Zyklus ist bis zu einem gewissen Grad künstlich, daher fassen die meisten Zerlegungsverfahren diese beiden Komponenten zu einer einzigen zusammen. Die wird in der Literatur häufig als Trend-Zyklus Komponente bezeichnet und in der grafischen Zerlegung der Zeitreihe erscheint die Komponente als Trend (Makridakis et al., 1998).
 
 
-```{r}
+```{r, context="server"}
 output$decomp_plot <- renderPlot({
-  df <- benzinpreis %>%
+  price_medianByHour <- benzinpreis %>%
     filter(id == "005056ba-7cb6-1ee5-b187-bc79c0a8d9ec") %>%
-    mutate(
-      datetime = as.POSIXct(paste(date, time), format = "%Y-%m-%d %H:%M:%S")
-    ) %>%
-    arrange(datetime) %>%
-    filter(!is.na(datetime), !is.na(e10_median)) %>%
-    filter(
-      datetime >= min(datetime) + lubridate::weeks(2),
-      datetime <  min(datetime) + lubridate::weeks(4)
-    )
+    mutate(hour = substr(time, 1, 2)) %>%
+    group_by(date, hour) %>%
+    summarise(e10_median = median(e10_median), .groups = "drop")
 
-  ts_data <- ts(df$e10_median, frequency = 24)
+  ts_data <- ts(price_medianByHour$e10_median[337:(24 * 28)], frequency = 24)
 
   stl_result <- stl(ts_data, s.window = "periodic")
-  plot(stl_result, main = "STL-Dekomposition der E10-Preise stündlich Woche 3-4")
+
+  plot(stl_result, main = "STL-Dekomposition: E10-Medianpreise (Woche 3-4)")
 })
 ```
 
@@ -393,23 +389,23 @@ plotOutput("decomp_plot")
 ```
 
 
-Die dargestellten Daten zeigen stündlich gemessene E10-Benzinpreise an einer ausgewählten Tankstelle über einen bestimmten Zeitraum. In diesem Plot wird ein Ausschnitt von Woche 3 bis Woche 4 nach Beginn der Aufzeichnung betrachtet.
+Die dargestellten Daten zeigen stündlich gemessene E10-Benzinpreise an einer ausgewählten Tankstelle über einen bestimmten Zeitraum. In diesem Plot wird ein Ausschnitt von Woche 3 bis Woche 4 nach Beginn der Aufzeichnung betrachtet. Der Trend zeigt steigende Preisniveaus über den Zeitraum von zwei Wochen. Die Saisonalität bildet regelmäßige, sich täglich wiederholende Schwankungen ab.
 
 ## Trendbestimmung
 - Gleitende Durchschnitt (Moving Average):
 
-Eine der einfachsten Methoden zur Glättung von Zeitreihen besteht in der Berechnung sogenannter gleitender Durchschnitte. Dabei wird versucht, den zugrunde liegenden Trend einer Zeitreihe zu schätzen, indem man lokale Mittelwerte bildet.
+Eine der einfachsten Methoden zur Glättung von Zeitreihen besteht in der Berechnung sogenannter gleitender Durchschnitte. Dabei wird versucht, den zugrunde liegenden Trend einer Zeitreihe zu schätzen, indem man lokale Mittelwerte bildet (Fahrmeir et al., 2006).
 
-Ein gleitender Durchschnitt der Ordnung $m$ wird folgendermaßen definiert:
+Ein gleitender Durchschnitt der Ordnung $m$ wird folgendermaßen definiert (Hyndman & Athanasopoulos, 2013):
 
 $$
 \hat{T}_t = \frac{1}{m} \sum_{j = -k}^{k} y_{t + j}, \quad \text{mit } m = 2k + 1 \
 $$
 
-Dabei wird der Wert der Trend zum Zeitpunkt $t$ als Durchschnitt der Zeitreihenwerte innerhalb eines symmetrischen Fensters von $k$ Perioden um $t$ berechnet. Da benachbarte Zeitpunkte meist ähnliche Werte aufweisen, werden durch diesen Durchschnitt zufällige Schwankungen reduziert. Übrig bleibt eine geglättete Darstellung des langfristigen Trends.  
+Dabei wird der Wert der Trend zum Zeitpunkt $t$ als Durchschnitt der Zeitreihenwerte innerhalb eines symmetrischen Fensters von $k$ Perioden um $t$ berechnet. Da benachbarte Zeitpunkte meist ähnliche Werte aufweisen, werden durch diesen Durchschnitt zufällige Schwankungen reduziert. Übrig bleibt eine geglättete Darstellung des langfristigen Trends (Hyndman & Athanasopoulos, 2013).  
 
 Man spricht in diesem Fall von einem $m$-MA, also einem gleitenden Durchschnitt der Ordnung $m$.
-
+(Hyndman & Athanasopoulos, 2013)
 
 ```{r}
 sliderInput("ma_window", "Fenstergröße (Tage) für gleitenden Durchschnitt:",
@@ -417,7 +413,7 @@ sliderInput("ma_window", "Fenstergröße (Tage) für gleitenden Durchschnitt:",
 
 ```
 
-```{r}
+```{r, context="server"}
 output$trend_plot <- renderPlotly({
   req(input$ma_window)  
   
@@ -460,16 +456,16 @@ question("Wie würdest du den Temperaturtrend anhand der gleitenden Durchschnitt
 
 - Lokale Regression (LOESS : Locally Estimated Scatterplot Smoothing)
 
-ist eine Methode zur Trendglättung, bei der nicht der Durchschnitt benachbarter Punkte berechnet wird, sondern lokale Geraden an Abschnitte der Zeitreihe angepasst werden.
+ist eine Methode zur Trendglättung, bei der nicht der Durchschnitt benachbarter Punkte berechnet wird, sondern lokale Geraden an Abschnitte der Zeitreihe angepasst werden (Makridakis et al., 1998, S.104-106).
 
-Ein bekanntes Verfahren dafür ist Loess und basiert auf lokaler linearer Glättung, ist jedoch so konzipiert, dass Ausreißer oder ungewöhnliche Beobachtungen weniger Einfluss auf die Trendlinie haben. Dadurch liefert die Loess-Kurve eine robustere Darstellung des Trends, selbst bei untypischen Datenpunkten.
+Ein bekanntes Verfahren dafür ist Loess und basiert auf lokaler linearer Glättung, ist jedoch so konzipiert, dass Ausreißer oder ungewöhnliche Beobachtungen weniger Einfluss auf die Trendlinie haben. Dadurch liefert die Loess-Kurve eine robustere Darstellung des Trends, selbst bei untypischen Datenpunkten (Makridakis et al., 1998, S.104-106).
 
 ```{r}
 sliderInput("loess_span", "Glättungsgrad (LOESS span):",
             min = 0.025, max = 0.5, value = 0.2, step = 0.01)
 ```
 
-```{r}
+```{r, context="server"}
 output$loess_plot <- renderPlotly({
  
   df_smoothed <- all_temp %>%
@@ -513,7 +509,7 @@ selectInput("zeit_aggregation", "Zeitliche Auflösung:",
             selected = "Stunde")
 ```
 
-```{r}
+```{r, context="server"}
 output$benzin_plot <- renderPlot({
   df <- benzinpreis %>%
     filter(id == "005056ba-7cb6-1ee5-b187-bc79c0a8d9ec") %>%
@@ -580,13 +576,13 @@ question("Welche Art von Saisonalität erkennst du in der Grafik?",
 ```
 
 
-Hier ist die bereinigte Saisonalität dargestellt – also das wiederkehrende Muster der E10-Preise im Tagesverlauf.
+Hier ist die bereinigte Saisonalität dargestellt, also das wiederkehrende Muster der E10-Preise im Tagesverlauf.
 
 
 Im Gegensatz zum vorherigen Plot, der sowohl Trend als auch Streuung der Rohdaten zeigt, wurde hier der Trend entfernt und das Saisonalitätsmuster über alle Tage hinweg geglättet. Dadurch lässt sich der typische Tagesverlauf der Preise klarer erkennen, ohne durch Ausreißer oder Schwankungen überlagert zu werden.
 
 
-```{r}
+```{r, context="server"}
 output$benzin_plot_2 <- renderPlotly({
 
   df <- benzinpreis %>%
@@ -638,7 +634,7 @@ selectInput("zeit_temp_agg", "Zeitliche Auflösung:",
 ```
 
 
-```{r}
+```{r, context="server"}
 output$temp_s_plot <- renderPlot({
   req(input$stadt, input$zeit_temp_agg)
 
@@ -650,11 +646,11 @@ output$temp_s_plot <- renderPlot({
       month = lubridate::month(date),
       month_label = lubridate::month(date, label = TRUE),
       quarter_group = factor(case_when(
-        month %% 4 == 1 ~ "M1-4-7-10",
-        month %% 4 == 2 ~ "M2-5-8-11",
-        month %% 4 == 3 ~ "M3-6-9-12",
-        month %% 4 == 0 ~ "M4-8-12-3"  # optional, catch month = 12
-      ), levels = c("M1-4-7-10", "M2-5-8-11", "M3-6-9-12", "M4-8-12-3"))
+        month %% 4 == 1 ~ "M1-5-9",
+        month %% 4 == 2 ~ "M2-6-10",
+        month %% 4 == 3 ~ "M3-7-11",
+        month %% 4 == 0 ~ "M4-8-12" 
+      ), levels = c("M1-5-9", "M2-6-10", "M3-7-11", "M4-8-12"))
     )
 
   xvar <- switch(input$zeit_temp_agg,
@@ -678,7 +674,7 @@ output$temp_s_plot <- renderPlot({
 plotOutput("temp_s_plot")
 ```
 
-```{r}
+```{r, context="server"}
 output$season_plot <- renderPlot({
 df <- all_temp %>%
     filter(city == input$stadt) %>%
@@ -703,7 +699,7 @@ df <- all_temp %>%
 Hier ist die bereinigte Saisonalität:
 
 
-```{r}
+```{r, context="server"}
 output$season_plot_stl <- renderPlot({
 
   df <- all_temp %>%
@@ -736,14 +732,13 @@ question("Wie oft wiederholt sich das Temperaturniveau im Verlauf dieser Zeitrei
 )
 ```
 
-::: summary
 
 ```{r}
 plotOutput("season_plot")
 ```
 
 Die Grafik stellt die durchschnittliche monatliche Temperatur in den Jahren 2020 bis 2025 dar. Jede farbige Linie zeigt den Jahresverlauf für ein bestimmtes Jahr. Dabei wird deutlich, dass sich die Temperatur jedes Jahr nach einem ähnlichen Muster verändert
-:::
+
 
 ## Dekomposition
 
@@ -752,7 +747,7 @@ Bevor wir Zeitreihen zerlegen, sollten wir verstehen, wie man eine Zeitreihe mat
 ___
 ➕ Additives Modell
 
-Im klassischen **additiven Modell** setzen sich die Bestandteile der Zeitreihe unabhängig voneinander zusammen:
+Im klassischen **additiven Modell** setzen sich die Bestandteile der Zeitreihe unabhängig voneinander zusammen. Die folgende Darstellung basiert auf Dagum und Bianconcini (2016):
 
 \[
 y_t = T_t + S_t + I_t
@@ -766,7 +761,7 @@ y_t = T_t + S_t + I_t
 ___
 ✖️ Multiplikatives Modell
 
-Wenn sich die Komponenten **gegenseitig beeinflussen**, ist ein **multiplikatives Modell** angemessener:
+Wenn sich die Komponenten **gegenseitig beeinflussen**, ist ein **multiplikatives Modell** angemessener (Dagum & Bianconcini, 2016):
 
 \[
 y_t = T_t \cdot S_t \cdot I_t
@@ -774,7 +769,7 @@ y_t = T_t \cdot S_t \cdot I_t
 
 Hier hängen saisonale und zufällige Abweichungen **proportional vom Trend ** ab.
 
-❗ Grenzen der klassischen Zerlegung
+❗ Grenzen der klassischen Zerlegung (Hyndman & Athanasopoulos, 2013):
 
 - Keine Trendwerte an Anfang/Ende verfügbar: Der Trend wird mit einem gleitenden Durchschnitt berechnet. Dafür braucht man Werte vor und nach einem Zeitpunkt. Deshalb kann am Rand der Zeitreihe kein Trend berechnet werden
 - Trend-Zyklus ist oft zu glatt: Schnelle Anstiege oder Abfälle werden oft stark geglattet.
@@ -784,7 +779,7 @@ Hier hängen saisonale und zufällige Abweichungen **proportional vom Trend ** a
 ___
 🔎 STL
 
-Die **STL-Zerlegung** ist eine moderne, flexible und robuste Methode zur Zerlegung von Zeitreihen.  
+Die **STL-Zerlegung** ist eine moderne, flexible und robuste Methode zur Zerlegung von Zeitreihen (Hyndman & Athanasopoulos, 2013).  
 STL steht für:
 **S**easonal and **T**rend decomposition using **L**oess
 
@@ -837,14 +832,12 @@ grade_this({
 ___
 ️❗In dieser Lernanwendung wird nur die additive STL-Zerlegung behandelt. STL ist eine vielseitige und robuste Methode zur Zerlegung von Zeitreihen, wurde jedoch speziell für additive Modelle entwickelt. Aus Gründen der Klarheit und Fokussierung wird daher auf die additive Variante beschränkt.️
 
-Eine multiplikative Zerlegung lässt sich durch Log-Transformation der Daten und anschließende Rücktransformation der Komponenten durchführen. Zwischenformen von additiven und multiplikativen Zerlegungen können mithilfe der Box-Cox-Transformation realisiert werden.
+Eine multiplikative Zerlegung lässt sich durch Log-Transformation der Daten und anschließende Rücktransformation der Komponenten durchführen. Zwischenformen von additiven und multiplikativen Zerlegungen können mithilfe der Box-Cox-Transformation realisiert werden (Hyndman & Athanasopoulos, 2013).
 
 
 ## Auto-Korrelation
 
-In Zeitreihen ist es häufig so, dass der heutige Wert mit vorherigen Werten zusammenhängt. Autokorrelation misst die lineare Beziehung zwischen zeitlich versetzten Werten einer Zeitreihe. 
-
-Hohe Autokorrelationswerte bei bestimmten Lags können auf saisonale Muster oder wiederkehrende Strukturen in den Daten hinweisen.
+In Zeitreihen ist es häufig so, dass der heutige Wert mit vorherigen Werten zusammenhängt. Autokorrelation misst die lineare Beziehung zwischen zeitlich versetzten Werten einer Zeitreihe. Hohe Autokorrelationswerte bei bestimmten Lags können auf saisonale Muster oder wiederkehrende Strukturen in den Daten hinweisen (Hyndman & Athanasopoulos, 2013).
 
 
 ```{r}
@@ -862,7 +855,7 @@ selectInput("lag_days", "Zeitverzögerung (Lag) wählen:",
 
 ```
 
-```{r}
+```{r, context="server"}
 
 output$lag_plot <- renderPlot({
 
@@ -927,7 +920,7 @@ selectInput("stadt_acf", "Städte auswählen:",
 ```
 
 
-```{r}
+```{r, context="server"}
 output$acf_plot <- renderPlot({
   acf_plot_data <- all_temp %>%
   filter(city == input$stadt_acf) %>%
@@ -966,7 +959,7 @@ selectInput("stadt_", "Städte auswählen:",
                    selected = "Hanoi")
 ```
 
-```{r}
+```{r, context="server"}
 output$lag_monthly <- renderPlot({
   df <- all_temp %>%
     filter(city == input$stadt_) %>%
@@ -985,7 +978,6 @@ output$lag_monthly <- renderPlot({
   lag.plot(ts_temp, lags = 12, do.lines = FALSE,
            main = paste("Lag Plot: Monatliche Temperatur in", input$stadt))
 })
-
 
 output$acf_monthly <- renderPlot({
   df <- all_temp %>%
@@ -1088,16 +1080,9 @@ question("Was bedeutet ein starker Peak bei Lag = 12 in der ACF monatlicher Temp
 ```
 
 ___
-### 🧠 Was du gelernt hast
+🎓 Fazit
 
-| Thema                      | Inhalt                                                               |
-|---------------------------|----------------------------------------------------------------------|
-| 📈 **Zeitreihe verstehen** | Datenpunkte über die Zeit hinweg analysieren                         |
-| 📉 **Trend erkennen**      | Langfristige Entwicklungen sichtbar machen                           |
-| 🔁 **Saisonalität**         | Wiederkehrende Muster wie Jahreszeiten oder                          |
-| ⚙️ **STL-Zerlegung**        | Aufspaltung in Trend, Saison und Rest mit flexibler Zerlegungsmethode |
-| 📊 **Autokorrelation**      | Abhängigkeit eines Werts von vorherigen Zeitpunkten (Lag)            |
-| ❗ **Umgang mit NAs**        | Fehlende Werte identifizieren und sinnvoll ersetzen (z. B. Mittelwert) |
+"Welcher Ort und welcher Zeitraum wären deiner Meinung nach am angenehmsten für die Reise und warum?"
 
 ```{r}
 wellPanel(
@@ -1112,13 +1097,85 @@ wellPanel(
 )
 ```
 
-"Welcher Ort und welcher Zeitraum wären deiner Meinung nach am angenehmsten für die Reise – und warum?"
+___
+### 🧭 Beispielentscheidung
 
-::: summary
-🎓 Fazit
+Eine Person ist empfindlich gegenüber starker Hitze, möchte also weder extreme Hitzespitzen noch große Temperaturschwankungen.
+Die andere Person mag eher warmes Wetter, möchte aber nicht in eine kalte oder regnerische Jahreszeit reisen.
 
+Nach Analyse der Zeitreihendaten für alle drei Städte:
+
+🌆 Hanoi: Deutlich saisonale Schwankungen mit heißem Sommer, im Frühling und Herbst angenehmer.
+
+🗼 Tokyo: Größte Temperaturschwankungen über das Jahr.
+
+🏝 Manila: Sehr konstante Temperaturen, aber auf durchgehend hohem Niveau und für Hitzeempfindliche eher ungeeignet.
+
+🔍 **Empfehlung:** 
+Hanoi im Zeitraum März–April:
+
+- Der langfristige Trend steigt nur leicht.
+
+- Die heißeste Periode (saisonale Spitze) liegt in den Monaten Juni bis August.
+
+- Temperaturschwankungen in Hanoi sind zwar vorhanden, aber deutlich geringer als in Tokyo.
+
+- In diesen Monaten liegen die Temperaturen meist zwischen 21 und 27°C, also über 20°C, weder zu heiß noch zu kalt.
+
+---
+
+#### 🧠 Was du gelernt hast
+
+| Thema                      | Inhalt                                                               |
+|---------------------------|----------------------------------------------------------------------|
+| 📈 **Zeitreihe verstehen** | Datenpunkte über die Zeit hinweg analysieren                         |
+| 📉 **Trend erkennen**      | Langfristige Entwicklungen sichtbar machen                           |
+| 🔁 **Saisonalität**         | Wiederkehrende Muster wie Jahreszeiten oder                          |
+| ⚙️ **STL-Zerlegung**        | Aufspaltung in Trend, Saison und Rest mit flexibler Zerlegungsmethode |
+| 📊 **Autokorrelation**      | Abhängigkeit eines Werts von vorherigen Zeitpunkten                  |
+| ❗ **Umgang mit NAs**        | Fehlende Werte identifizieren und sinnvoll ersetzen  |
 
 ✈️ Du hast gelernt, wie man mit Hilfe von Zeitreihendaten eine fundierte, datengestützte Entscheidung trifft.
 📊 Dieses Wissen kannst du nicht nur für Reisen nutzen, sondern für viele zeitabhängige Probleme von Klima über Energie bis Wirtschaft.
-:::
+
+___
+
+#### Umfrage 
+
+Danke, dass du die Anwendung genutzt hast!
+
+Dein Feedback ist sehr wichtig! Nimm dir bitte kurz Zeit und fülle die Umfrage aus! 
+
+[👉 Jetzt Umfrage ausfüllen](https://docs.google.com/forms/d/e/1FAIpQLSfkOXPH_UW_TBGEg7UlM7JR5-tzE-JoCKfqcDT04OejclnmNQ/viewform?usp=dialog)
+
+
+## Quellen
+
+Ahn, H., Sun, K. & Kim, K. P. (2021). Comparison of Missing Data Imputation Methods in Time Series Forecasting. Computers, Materials & Continua/Computers, Materials & Continua (Print), 70(1), 767–779. https://doi.org/10.32604/cmc.2022.019369
+
+Chatfield, C. & Xing, H. (2019). The Analysis of Time Series: An Introduction with R. https://www.amazon.com/Analysis-Time-Introduction-Chapman-Statistical/dp/1138066133
+
+Dagum, E. B. & Bianconcini, S. (2016). Seasonal Adjustment Methods and Real Time Trend-Cycle Estimation. Springer.
+
+Fahrmeir, L., Pigeot, I. & Tutz, G. (2006). Statistik: Der Weg zur Datenanalyse. Springer-Verlag.
+
+Hyndman, R. J. & Athanasopoulos, G. (2013). Forecasting: principles and practice.
+
+Jose, Jonath. (2022). INTRODUCTION TO TIME SERIES ANALYSIS AND ITS APPLICATIONS. https://www.researchgate.net/publication/362389180_INTRODUCTION_TO_TIME_SERIES_ANALYSIS_AND_ITS_APPLICATIONS
+
+Makridakis, S. G., Wheelwright, S. C. & Hyndman, R. J. (1998). Forecasting: Methods and Applications.
+
+Moritz S, Sarda A,  Bartz-Beielstein T, Zaefferer M, Stork J (2015). Comparison of different Methods for Univariate Time Series Imputation in R. https://arxiv.org/pdf/1510.03924
+
+
+Moritz, S. & Bartz-Beielstein, T. (2017). ImputeTS: Time Series Missing value Imputation in R. The R Journal, 9(1), 207. https://doi.org/10.32614/rj-2017-009
+
+Moritz, S., Gatscha, S., Wang, E. & Hause, R. (2022). Time Series Missing Value Imputation. Package „imputeTS“. In The Comprehensive R Archive Network (Bd. 9, Nummer 1, S. 207). https://doi.org/10.32614/rj-2017-009
+
+Müller K, Wickham H (2025). tibble: Simple Data Frames. R package version 3.3.0, https://tibble.tidyverse.org/.
+
+Pratama, I., Permanasari, A. E., Ardiyanto, I. & Indrayani, R. (o. D.). A review of missing values handling methods on time-series data. 2016 International Conference On Information Technology Systems And Innovation (ICITSI), Bandung, Indonesia. https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=7858189
+
+
+
 
