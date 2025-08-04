@@ -1,0 +1,12 @@
+name: Zeitreihenanalyse
+title: Zeitreihenanalyse
+username: phdlinh
+account: phdlinh
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 15079416
+bundleId: 10693509
+url: https://phdlinh.shinyapps.io/Zeitreihenanalyse/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE

@@ -1,42 +1,37 @@
 ---
 title: "Zeitreihenanalyse"
-author: Dieu Linh Pham
-email: Dieu.Pham@Student.HTW-Berlin.de
+author: "Dieu Linh Pham"
 date: "`r format(Sys.time(), '%d.%m.%Y')`"
-runtime: shiny_prerendered
-output: learnr::tutorial
+output:
+  learnr::tutorial:
+    progressive: true
+runtime: shiny
+email: "Dieu.Pham@Student.HTW-Berlin.de"
+resource_files:
+- renv.lock
 ---
 
-```{r setup, include=FALSE}
-require(RAppArmor) 
+```{r setup, include=FALSE} 
+library(rsconnect)
 library(learnr)
 library(gradethis)
 library(shiny)
 library(ggplot2)
 library(dplyr)
 library(readr)
+library(plotly)
+library(lubridate)
+library(imputeTS)
+library(tibble)
+
+if (isTRUE(getOption("tutorial.runtime", "") == "shiny")) {
+  gradethis_setup()
+}
 
 rmarkdown::find_pandoc(cache = FALSE)
 knitr::opts_chunk$set(echo = FALSE)
 
-gradethis_setup()
 
-```
-
-## Ausgangsproblem
-
-
-#### Das Problem
-
-Stell dir vor, du planst mit zwei Freund:innen eine Reise nach Asien von Anfang August bis Ende September. Jeder hat ein Reiseziel vorgeschlagen – zur Auswahl stehen:
-
-- 🌆 **Hanoi (Vietnam)**
-- 🗼 **Tokio (Japan)**
-- 🏝️ **Manila (Philippinen)**
-
-Das Wetter könnte ein entscheidender Faktor für eure Entscheidung sein. Einer deiner Freund:innen ist besonders empfindlich gegenüber großer Hitze. Um die angenehmste Stadt für eure Reise auszuwählen, möchtest du herausfinden, wie das Wetter in dem Zeitraum voraussichtlich sein wird.
-
-```{r}
 hanoi <- read_csv("hanoi_temp.csv", show_col_types = FALSE)
 
 hanoi <- hanoi %>%
@@ -57,10 +52,36 @@ tokyo <- read_csv("tokyo_temp.csv", show_col_types = FALSE) %>%
          city = "Tokyo") %>%
   rename(temperature = tavg)
 
-# Combine all
 all_temp <- bind_rows(hanoi, manila, tokyo)
 
+benzinpreis <- read_csv("tankerkoenigSoSe2025.csv", show_col_types = FALSE)
+
+hanoi_mit_zeitna <- readr::read_delim("hanoi_w_na.csv", delim = ";", show_col_types = FALSE) %>%
+  select(date, tavg) %>%
+  mutate(date = as.Date(date, format = "%Y%j")) %>%
+  rename(temperature = tavg)
+
+hanoi_mit_na <- readr::read_delim("hanoi_w_na_1.csv", delim = ";", show_col_types = FALSE) %>%
+  select(date, tavg) %>%
+  mutate(date = as.Date(date, format = "%Y%j")) %>%
+  rename(temperature = tavg)
 ```
+
+
+## Ausgangsproblem
+
+
+#### Das Problem
+
+
+Stell dir vor, du planst mit zwei Freund:innen eine Reise nach Asien für 2 Monate. Jeder hat ein Reiseziel vorgeschlagen – zur Auswahl stehen:
+
+- 🌆 **Hanoi (Vietnam)**
+- 🗼 **Tokio (Japan)**
+- 🏝️ **Manila (Philippinen)**
+
+Das Wetter könnte ein entscheidender Faktor für eure Entscheidung sein. Eine Person in der Gruppe ist hitzeempfindlich und das Wetter spielt also eine zentrale Rolle.
+Um die angenehmste Stadt für eure Reise auszuwählen, möchtest du herausfinden: 🧠 Welche Stadt eignet sich besonders gut und zu welchem Zeitpunkt ist das Klima dort am angenehmsten?
 
 
 ```{r}
@@ -73,7 +94,7 @@ dateRangeInput("datumsbereich", "Zeitraum:",
                separator = " bis ")
 ```
 
-```{r, context="server"}
+```{r}
 output$temp <- renderPlot({
   gefilterte_daten <- all_temp %>%
     filter(date >= input$datumsbereich[1],
@@ -87,47 +108,1017 @@ output$temp <- renderPlot({
     theme_minimal() +
     theme(axis.text.x = element_text(angle = 45, hjust = 1))
 })
+```
 
+```{r}
+plotOutput("temp")
+```
+
+Du hast tägliche Temperaturdaten von 2020 bis Juni 2025 für alle 3 Städte. Nun stellst du dir folgende Fragen:
+
+ - Wie sieht das typische Wetter in jeder Stadt aus?
+ - Welche Stadt zeigt regelmäßige Muster über die Jahre und wo gibt es viele Schwankungen?
+ - Lässt sich eine Vorhersage für dieses Jahr erstellen, basierend auf den vergangenen Daten?
+ - Welche Stadt ist also die beste Wahl für eine angenehme Reisezeit?
+
+### 🧠 Lernziel
+
+Ziel dieses Dashboards ist es, dich spielerisch und interaktiv mit den Grundlagen der Zeitreihenanalyse vertraut zu machen:
+
+- Was ist eine Zeitreihe?
+- Welche Bestandteile (Trend, Saisonalität, Rauschen) gibt es?
+- Und: Welche Stadt würdest du empfehlen und wann würdest du reisen?
+
+
+In nächsten Abschnitte lernst du grundlegende Konzepte der Zeitreihenanalyse und wendest sie direkt auf das Problem deiner Asienreise an.
+
+
+## Zeitreihe
+Eine Zeitreihe ist eine Sammlung von Beobachtungen, die fortlaufend über die Zeit hinweg erhoben wurden.
+Die Zeitreihenanalyse ist ein spezieller Ansatz zur Untersuchung von Daten, die über einen bestimmten Zeitraum hinweg in gleichmäßigen Abständen erhoben wurden.
+
+In diesem Fall analysieren wir eine Zeitreihe von **täglichen Durchschnittstemperaturen** für drei Städte in Asien zwischen Januar 2020 und Juni 2025. Im folgenden Diagramm kannst du selbst auswählen, welche Städte du analysieren möchtest. Beobachte die Linien, erkenne mögliche Muster oder Unterschiede zwischen den Städten:
+
+```{r}
+checkboxGroupInput("stadt_auswahl", "Städte auswählen:",
+                   choices = unique(all_temp$city),
+                   selected = unique(all_temp$city))
 
 ```
 
 ```{r}
+output$temp_city <- renderPlotly({
+  gefilterte_daten <- all_temp %>%
+    filter(city %in% input$stadt_auswahl)
 
-plotOutput("temp")
-```
+  p <- ggplot(gefilterte_daten, aes(x = date, y = temperature, color = city)) +
+    geom_line() +
+    labs(title = "Temperatur-Zeitreihe",
+         x = "Datum", y = "Temperatur (°C)", color = "Stadt") +
+    theme_minimal()
 
-```{r, context="server"}
-output$data_preview <- renderTable({
-  all_temp %>%
-    arrange(desc(date)) %>%   # or arrange(date) for ascending order
-    head(10)                  # show 10 rows (adjust as needed)
+  ggplotly(p)
 })
 ```
 
 ```{r}
-h4("🔢 Beispielhafte Temperaturdaten (Vorschau)")
-tableOutput("data_preview")
+h4("🌡️ Temperaturverlauf nach Stadtwahl")
+plotlyOutput("temp_city")
 ```
-Du hast tägliche Temperaturdaten von 2020 bis Juni 2025 für alle 3 Städte. Nun stellst du dir folgende Fragen:
 
- - Wie sieht das typische Wetter in August und September in jeder Stadt aus?
- - Welche Stadt zeigt regelmäßige Muster über die Jahre und wo gibt es viele Schwankungen?
- - Lässt sich eine Vorhersage für dieses Jahr erstellen, basierend auf den vergangenen Daten?
- - Welche Stadt ist also die beste Wahl für eine angenehme Reisezeit?
+
+
+```{r erkennenquestion}
+question("Sieht es so aus, als ob es ein sich wiederholendes Muster gibt?",
+    answer("ja", correct = TRUE, message = "Ja, sehr gut beobachtet! Und es gibt auch einen leichten Anstieg der Temperaturen über die Jahre"),
+    answer("nein", message = "Überprüfe nochmals die Daten, vielleicht über längeren Zeitraum."),
+  allow_retry = TRUE
+)
+```
+
+## Behandlung von fehlenden Werten
+
+Ein häufig auftretendes Problem bei Zeitreihendaten sind fehlende Werte. Sie:
+
+- verfälschen statistische Eigenschaften,
+
+- reduzieren die Nutzbarkeit der Daten für Auswertungen,
+
+- und beeinträchtigen besonders in der Zeitreihenmodellierung die Fähigkeit, zeitliche Abhängigkeiten korrekt zu erfassen.
+
+Dadurch kann die Qualität von Analysen und Prognosen erheblich beeinträchtigt werden.
+
+___
+FALL 1: fehlende Werte
+
+Die folgende Zeitreihe zeigt die durchschnittliche Temperatur (in °C) von Januar 2025 bis Mai 2025 in Hanoi und enthält bewusst fehlende Werte (NA). 
+
+```{r}
+output$na_hanoi <- renderPlot({
+  ggplot(hanoi_mit_na, aes(x = date, y = temperature)) +
+    geom_line() +
+    labs(title = "Temperatur-Zeitreihe mit NA",
+         x = "Datum", y = "Temperatur (°C)") +
+    theme_minimal()
+}, height = 400, width = 600)
+```
+
+```{r}
+plotOutput("na_hanoi")
+```
+
+
+Zu den einfachen Methoden gehören das Ignorieren der fehlenden Werte, das Löschen unvollständiger Beobachtungen.
+
+```{r na_question}
+question("Was passiert, wenn du NA-Zeilen einfach aus einer Zeitreihe entfernst?",
+    answer("Es kann zu Verzerrungen in der Analyse führen", correct = TRUE,
+         message = "Richtig! Ignorieren und Löschen zeigen sich oft als ungeeignet, da sie zu Verlusten an Informationsgehalt und einer Verschlechterung der Analyseergebnisse führen können."),
+  answer("Das Löschen verbessert die Genauigkeit", message = "Ganz im Gegenteil — es kann die Genauigkeit verringern."),
+  answer("Fehlende Werte beeinflussen Zeitreihenmodelle nicht", message = "Doch – Zeitreihenmodelle setzen oft vollständige Daten voraus."),
+  allow_retry = TRUE
+)
+```
+
+Eine praktikable Lösung stellt die sogenannte Mittelwertimputation dar. Fehlende Werte werden durch einen Gesamtmittelwert ersetzt.
+
+Nutze die Funktion na_mean() aus dem Paket imputeTS um die fehlenden Werte zu ersetzen.
+
+```{r na_exercise, exercise=TRUE}
+# Verwende den vorbereiteten Dataset `hanoi_mit_na` und die Spalte `temperature`
+hanoi_filled <- NULL
+ggplot_na_imputations(hanoi_mit_na$temperature, hanoi_filled)
+invisible(hanoi_filled)
+```
+
+```{r na_exercise-check}
+grade_this({
+  expected <- na_mean(hanoi_mit_na$temperature)
+  
+  if (is.numeric(.result) &&
+      isTRUE(all.equal(.result, expected))) {
+    pass("Sehr gut! Du hast die fehlenden Werte korrekt mit `na_mean()` aufgefüllt.")
+  } else {
+    fail("Bitte wende `na_mean()` korrekt auf die Spalte `temperature` an und speichere das Ergebnis in `hanoi_filled`.")
+  }
+})
+```
+
+::: {#na_exercise-hint}
+Benutze nur die Spalte 'temperature'.
+:::
+
+```{r na_question_2}
+question("Was hältst du von der Imputation mit `na_mean()` für Temperatur-Zeitreihen?",
+  answer("Sie ist eine gute Wahl, weil sie einfach und schnell ist.", correct = FALSE,
+         message = "Nicht ganz, einfache Methoden sind nicht immer passend."),
+  answer("Sie ist ungeeignet, weil sie keine Trends oder Saisonalität berücksichtigt.", correct = TRUE, message = "Richtig! `na_mean()` setzt für alle fehlenden Werte denselben Mittelwert ein. Dadurch wird der natürliche Verlauf der Zeitreihe gestört: die eingefügten Werte folgen weder dem Trend noch den saisonalen Mustern und haben oft alle denselben y-Wert.Das kann die Analyse oder Vorhersage erheblich verfälschen."),
+  answer("Sie erzeugt Zufallswerte und ist deshalb unzuverlässig.", correct = FALSE,
+         message = "Nein, `na_mean()` ersetzt NAs durch einen konstanten Mittelwert, nicht zufällig."),
+  answer("Sie erhöht die Varianz der Zeitreihe.", correct = FALSE,
+         message = "Im Gegenteil, sie reduziert oft die Varianz."),
+  allow_retry = TRUE
+)
+```
+
+na_mean()
+- ✅ Sehr einfach und schnell
+- ⚠️ Geringe Genauigkeit bei vielen Zeitreihen
+- 🚫 Keine Berücksichtigung zeitlicher Strukturen
+- 📉 Führt oft zu reduzierter Varianz
+
+Eine andere Methode ist lineare Interpolation. Im ersten Schritt wird die saisonale Komponente von der Zeitreihe getrennt. Anschließend erfolgt die Imputation auf der verbleibenden (nicht-saisonalen) Komponente mittels linearer Interpolation. Danach wird die saisonale Komponente wieder hinzugefügt.
+Diese Methode eignet sich besonders gut für Zeitreihen mit klarer und ausgeprägter Saisonalität.
+
+Die Funktion na_interpolation gehört jedoch zu den Ansätzen, die in der Regel sehr gute Ergebnisse liefern und sich besonders dann eignen, wenn eine genauere Ersetzung fehlender Werte erforderlich ist.
+
+Nutze jetzt die Funktion na_interpolation() aus dem Paket imputeTS um die fehlenden Werte zu ersetzen.
+
+```{r na_exercise_2, exercise=TRUE}
+# Verwende den vorbereiteten Dataset `hanoi_mit_na` und die Spalte `temperature`
+hanoi_filled <- NULL
+ggplot_na_imputations(hanoi_mit_na$temperature, hanoi_filled)
+invisible(hanoi_filled)
+```
+
+```{r na_exercise_2-check}
+grade_this({
+  expected <- na_interpolation(hanoi_mit_na$temperature)
+  
+  if (is.numeric(.result) &&
+      isTRUE(all.equal(.result, expected))) {
+    pass("Sehr gut! Du hast die fehlenden Werte korrekt mit `na_mean()` aufgefüllt.")
+  } else {
+    fail("Bitte wende `na_interpolation()` korrekt auf die Spalte `temperature` an und speichere das Ergebnis in `hanoi_filled`.")
+  }
+})
+```
+
+::: {#na_exercise_2-hint}
+Benutze nur die Spalte 'temperature'.
+:::
+
+___
+FALL 2: fehlender Zeitstempel
+
+Sieh dir die Zeitreihe unten genau an und zoome hinein, um zu überprüfen, ob einzelne Zeitpunkte in der Datenreihe fehlen. In der Tabelle rechts siehst du einen Auszug der Originaldaten. Dort kannst du erkennen, welche Datenpunkte existieren und indirekt auch sehen, welche Tage vollständig fehlen.
+
+```{r}
+output$zeitna_hanoi <- renderPlotly({
+  p <- ggplot(hanoi_mit_zeitna, aes(x = date, y = temperature)) +
+    geom_line() +
+    labs(title = "Temperatur-Zeitreihe mit NA",
+         x = "Datum", y = "Temperatur (°C)") +
+    theme_minimal()
+  
+  ggplotly(p)
+})
+```
+
+```{r}
+output$na_table_hanoi <- renderTable({
+   hanoi_mit_zeitna %>%
+    mutate(date = format(date, "%d.%m.%Y")) %>%
+    head(15)
+})
+```
+
+```{r}
+fluidRow(
+  column(width = 8,
+         plotlyOutput("zeitna_hanoi")
+  ),
+  column(width = 3,
+         tableOutput("na_table_hanoi")
+  )
+)
+```
+
+In R kann man mit dem Paket tibble eine vollständige Zeitachse erstellen (z.B. mit seq() für tägliche Daten) und diese anschließend per left_join() mit der ursprünglichen Zeitreihe verbinden. 
+
+Führe einfach den folgenden Code aus, um zu sehen, wie die fehlenden Zeitpunkte in der Zeitreihe ergänzt wurden. Führe den folgenden Code aus, um zu sehen, wie die fehlenden Zeitpunkte in der Zeitreihe ergänzt wurden.
+```{r na_exercise_3, exercise=TRUE}
+full_dates <- tibble(date = seq(min(hanoi_mit_zeitna$date),
+                                max(hanoi_mit_zeitna$date),
+                                by = "day"))
+hanoi_fixed <- full_dates %>%
+  left_join(hanoi_mit_zeitna, by = "date")
+
+ggplot(hanoi_fixed, aes(x = date, y = temperature)) +
+  geom_line(color = "steelblue") +
+  geom_point(data = filter(hanoi_fixed, is.na(temperature)),
+             aes(x = date, y = temperature), color = "red", size = 2) +
+  labs(title = "Temperatur-Zeitreihe mit fehlenden Zeitpunkten",
+       x = "Datum", y = "Temperatur (°C)") +
+  theme_minimal()
+```
+
+So werden fehlende Zeitpunkte, die im Originaldatensatz vollständig gefehlt haben, wieder eingefügt und mit NA markiert. Anschließend können die entstandenen NA-Werte mit den oben genannten Imputationsmethoden aufgefüllt werden.
+
+## Komponenten einer Zeitreihe
+Zeitreihen bestehen oft aus folgenden Komponenten:
+
+- 📈 **Trend** – langfristige Entwicklung der Werte über einen längeren Zeitraum (steigen, fallen oder gleich bleiben)
+- 🔁 **Saisonale Schwankung** – regelmäßige Muster innerhalb eines Jahres, z.B. durch Jahreszeiten oder Feiertage
+- **Zyklen** – mehrjährige, wellenartige Schwankungen, die meist wirtschaftliche Auf- und Abschwünge widerspiegeln
+- 🎲 **Zufälliges Rauschen** – kleine Einflüsse, die ständig auftreten
+
+
+Die Unterscheidung zwischen Trend und Zyklus ist bis zu einem gewissen Grad künstlich, daher fassen die meisten Zerlegungsverfahren diese beiden Komponenten zu einer einzigen zusammen. Die wird in der Literatur häufig als Trend-Zyklus Komponente bezeichnet und in der grafischen Zerlegung der Zeitreihe erscheint die Komponente als Trend.
+
+
+```{r}
+output$decomp_plot <- renderPlot({
+  df <- benzinpreis %>%
+    filter(id == "005056ba-7cb6-1ee5-b187-bc79c0a8d9ec") %>%
+    mutate(
+      datetime = as.POSIXct(paste(date, time), format = "%Y-%m-%d %H:%M:%S")
+    ) %>%
+    arrange(datetime) %>%
+    filter(!is.na(datetime), !is.na(e10_median)) %>%
+    filter(
+      datetime >= min(datetime) + lubridate::weeks(2),
+      datetime <  min(datetime) + lubridate::weeks(4)
+    )
+
+  ts_data <- ts(df$e10_median, frequency = 24)
+
+  stl_result <- stl(ts_data, s.window = "periodic")
+  plot(stl_result, main = "STL-Dekomposition der E10-Preise stündlich Woche 3-4")
+})
+```
+
+```{r}
+plotOutput("decomp_plot")
+```
+
+
+Die dargestellten Daten zeigen stündlich gemessene E10-Benzinpreise an einer ausgewählten Tankstelle über einen bestimmten Zeitraum. In diesem Plot wird ein Ausschnitt von Woche 3 bis Woche 4 nach Beginn der Aufzeichnung betrachtet.
+
+## Trendbestimmung
+- Gleitende Durchschnitt (Moving Average):
+
+Eine der einfachsten Methoden zur Glättung von Zeitreihen besteht in der Berechnung sogenannter gleitender Durchschnitte. Dabei wird versucht, den zugrunde liegenden Trend einer Zeitreihe zu schätzen, indem man lokale Mittelwerte bildet.
+
+Ein gleitender Durchschnitt der Ordnung $m$ wird folgendermaßen definiert:
+
+$$
+\hat{T}_t = \frac{1}{m} \sum_{j = -k}^{k} y_{t + j}, \quad \text{mit } m = 2k + 1 \
+$$
+
+Dabei wird der Wert der Trend zum Zeitpunkt $t$ als Durchschnitt der Zeitreihenwerte innerhalb eines symmetrischen Fensters von $k$ Perioden um $t$ berechnet. Da benachbarte Zeitpunkte meist ähnliche Werte aufweisen, werden durch diesen Durchschnitt zufällige Schwankungen reduziert. Übrig bleibt eine geglättete Darstellung des langfristigen Trends.  
+
+Man spricht in diesem Fall von einem $m$-MA, also einem gleitenden Durchschnitt der Ordnung $m$.
+
+
+```{r}
+sliderInput("ma_window", "Fenstergröße (Tage) für gleitenden Durchschnitt:",
+            min = 5, max = 360, value = 30, step = 5)
+
+```
+
+```{r}
+output$trend_plot <- renderPlotly({
+  req(input$ma_window)  
+  
+  df <- all_temp %>%
+    group_by(city) %>%
+    arrange(date) %>%
+    mutate(trend = zoo::rollmean(temperature, input$ma_window, fill = NA, align = "center"))
+
+  p <- ggplot(df, aes(x = date)) +
+    geom_line(aes(y = temperature, color = city), alpha = 0.4) +
+    geom_line(aes(y = trend, color = city), size = 1) +
+    labs(title = "Trend mit Moving Average (für alle Städte)",
+         y = "Temperatur (°C)", x = "Datum", color = "Stadt") +
+    theme_minimal()
+
+  ggplotly(p)
+})
+```
+
+```{r}
+plotlyOutput("trend_plot")
+```
+
+```{r trend_question}
+question_text("Was passiert mit dem Trend, wenn du die Fenstergröße erhöhst?",
+    answer("glatter", correct = TRUE, message = "Sehr gut beobachtet! Eine größere Fenstergröße führt zu stärkerer Glättung."),
+  allow_retry = TRUE,
+  placeholder = 'Antworte mit 1 Wort'
+)
+```
+
+```{r trend_question2}
+question("Wie würdest du den Temperaturtrend anhand der gleitenden Durchschnittskurve beschreiben?",
+  answer("Er steigt über die Zeit hinweg langsam an", correct = TRUE),
+  answer("Er bleibt konstant ohne erkennbaren Verlauf", message = "Überprüfe nochmal die Trendlinie. Zeigt sie Veränderung?"),
+  answer("Er fällt abrupt mehrfach ab"),
+  allow_retry = TRUE
+)
+```
+
+- Lokale Regression (LOESS : Locally Estimated Scatterplot Smoothing)
+
+ist eine Methode zur Trendglättung, bei der nicht der Durchschnitt benachbarter Punkte berechnet wird, sondern lokale Geraden an Abschnitte der Zeitreihe angepasst werden.
+
+Ein bekanntes Verfahren dafür ist Loess und basiert auf lokaler linearer Glättung, ist jedoch so konzipiert, dass Ausreißer oder ungewöhnliche Beobachtungen weniger Einfluss auf die Trendlinie haben. Dadurch liefert die Loess-Kurve eine robustere Darstellung des Trends, selbst bei untypischen Datenpunkten.
+
+```{r}
+sliderInput("loess_span", "Glättungsgrad (LOESS span):",
+            min = 0.025, max = 0.5, value = 0.2, step = 0.01)
+```
+
+```{r}
+output$loess_plot <- renderPlotly({
  
-### 🧠 Lernziel
-
-Ziel dieses Dashboards ist es, dich **spielerisch und interaktiv** mit den Grundlagen der Zeitreihenanalyse vertraut zu machen:
-
-- Was ist eine Zeitreihe?
-- Welche Bestandteile (Trend, Saisonalität, Rauschen) gibt es?
-- Wie kann man einfache Prognosen erstellen?
-- Und: Welche Stadt würdest du empfehlen?
+  df_smoothed <- all_temp %>%
+    group_by(city) %>%
+    arrange(date) %>%
+    mutate(loess_fit = loess(temperature ~ as.numeric(date), span = input$loess_span)$fitted)
 
 
-## Analysis
+  p <- ggplot(df_smoothed, aes(x = date)) +
+    geom_line(aes(y = temperature, color = city), alpha = 0.4) +
+    geom_line(aes(y = loess_fit, color = city), size = 1) +
+    labs(title = "LOESS-Glättung der Temperaturzeitreihen",
+         x = "Datum", y = "Temperatur (°C)", color = "Stadt") +
+    theme_minimal()
+
+  ggplotly(p)
+})
 
 
-## Summary
+```
 
+```{r}
+plotlyOutput("loess_plot")
+```
+
+## Länge einer Saisonalität
+
+In einer Zeitreihe beschreibt die Saisonalität regelmäßig wiederkehrende Muster. Die Länge der Saisonalität gibt an, nach wie vielen Zeitpunkten sich dieses Muster wiederholt.
+
+##### Beispiel
+In diesem Diagramm siehst du die durchschnittlichen E10-Preise einer ausgewählten Tankstelle über eine bestimmte zeitliche Auflösung hinweg.
+
+- Graue Punkte zeigen alle einzelnen Preisbeobachtungen (inkl. Ausreißer).
+
+- Die blaue Linie stellt den durchschnittlichen (median) Preis für jede Zeitkategorie dar, z. B. für jede Stunde oder jeden Wochentag.
+
+
+```{r}
+selectInput("zeit_aggregation", "Zeitliche Auflösung:",
+             choices = c("Stunde", "Wochentag"),
+            selected = "Stunde")
+```
+
+```{r}
+output$benzin_plot <- renderPlot({
+  df <- benzinpreis %>%
+    filter(id == "005056ba-7cb6-1ee5-b187-bc79c0a8d9ec") %>%
+    mutate(
+      datetime = as.POSIXct(paste(date, time), format = "%Y-%m-%d %H:%M:%S"),
+      hour = lubridate::hour(datetime),
+      weekday = lubridate::wday(datetime, label = TRUE, week_start = 1)
+    ) %>%
+    filter(!is.na(hour)) 
+
+  df$hour <- factor(df$hour, levels = 0:23) 
+
+  xvar_col <- switch(input$zeit_aggregation,
+                     "Stunde" = "hour",
+                     "Wochentag" = "weekday")
+
+  ggplot(df, aes(x = .data[[xvar_col]], y = e10_median)) +
+    geom_point(alpha = 0.2, color = "gray") +
+    stat_summary(aes(group = 1), fun = median, geom = "line", color = "steelblue", linewidth = 1) +
+    labs(
+      title = paste("E10-Preis nach", input$zeit_aggregation, "für die ausgewählte Station"),
+      x = input$zeit_aggregation,
+      y = "E10 Median Preis (EUR)"
+    ) +
+    theme_minimal()
+})
+
+```
+
+```{r}
+plotOutput("benzin_plot")
+```
+
+
+Wähle unterschiedliche zeitliche Auflösungen im Dropdown-Menü oben. Beobachte, ob es wiederkehrende Muster gibt.
+
+```{r benzin_ss_question}
+question("Zu welcher Tageszeit ist der durchschnittliche E10-Preis am höchsten?",
+  answer("Am frühen Morgen (ca. 5–6 Uhr)", correct = TRUE, message = "Richtig – es gibt einen deutlichen Preisanstieg am Morgen."),
+  answer("Mittags", message = "Nicht ganz – der Preis sinkt mittags eher leicht."),
+  answer("Am späten Abend (ca. 22–23 Uhr)", message = "Nicht ganz – der Preis steigt abends, aber nicht so stark."),
+  random_answer_order = TRUE,
+  allow_retry = TRUE
+)
+```
+
+
+```{r benzin_ss_question_2}
+question("Wie häufig wiederholt sich das saisonale Muster?",
+  answer("Jeden Tag", correct = TRUE, message = "Richtig – die Preisstruktur wiederholt sich innerhalb von 24 Stunden."),
+  answer("Jede Woche"),
+  answer("Einmal pro Monat"),
+  allow_retry = TRUE
+)
+```
+
+```{r benzin_ss_question_3}
+question("Welche Art von Saisonalität erkennst du in der Grafik?",
+  answer("Tägliche Saisonalität", correct = TRUE, message = "Richtig! Die Preisschwankungen folgen einem Tagesmuster."),
+  answer("Wöchentliche Saisonalität", message = "Nicht in dieser Grafik – wir sehen Schwankungen innerhalb eines Tages."),
+  answer("Monatliche Saisonalität", message = "Das ist hier nicht dargestellt."),
+  allow_retry = TRUE
+)
+```
+
+
+Hier ist die bereinigte Saisonalität dargestellt – also das wiederkehrende Muster der E10-Preise im Tagesverlauf.
+
+
+Im Gegensatz zum vorherigen Plot, der sowohl Trend als auch Streuung der Rohdaten zeigt, wurde hier der Trend entfernt und das Saisonalitätsmuster über alle Tage hinweg geglättet. Dadurch lässt sich der typische Tagesverlauf der Preise klarer erkennen, ohne durch Ausreißer oder Schwankungen überlagert zu werden.
+
+
+```{r}
+output$benzin_plot_2 <- renderPlotly({
+
+  df <- benzinpreis %>%
+    filter(id == "005056ba-7cb6-1ee5-b187-bc79c0a8d9ec") %>%
+    mutate(datetime = as.POSIXct(paste(date, time), format = "%Y-%m-%d %H:%M:%S")) %>%
+    filter(!is.na(datetime)) %>%
+    arrange(datetime)
+
+  ts_price <- ts(df$e10_median, frequency = 24)
+
+  stl_result <- stl(ts_price, s.window = "periodic")
+  seasonal <- stl_result$time.series[, "seasonal"]
+  seasonal_subset <- seasonal[1:(7 * 24)]  # first 7 days (24 hours * 7)
+
+  plot_ly(
+    x = 1:(7 * 24),
+    y = seasonal_subset,
+    type = "scatter",
+    mode = "lines",
+    line = list(color = "steelblue", width = 2)
+  ) %>%
+    layout(
+      title = "Saisonale Komponente erste 7 Tage",
+      xaxis = list(title = "Stunden"),
+      yaxis = list(title = "Saisonalität")
+    )
+})
+```
+
+```{r}
+plotlyOutput("benzin_plot_2")
+```
+
+
+
+
+##### Zurück zum Ausgangsproblem
+
+
+Jetzt verstehst du, wie saisonale Muster in Daten sichtbar gemacht werden können, zum Beispiel bei Benzinpreisen, die sich im Tages oder Wochenverlauf regelmäßig ändern. Doch wie sieht das bei Temperaturen aus?
+
+
+```{r}
+selectInput("stadt", "Stadt:", choices = unique(all_temp$city), selected = "Hanoi")
+
+selectInput("zeit_temp_agg", "Zeitliche Auflösung:",
+            choices = c("Woche" = "week", "Monat" = "month", "Quartal" = "quarter"))
+
+```
+
+
+```{r}
+output$temp_s_plot <- renderPlot({
+  req(input$stadt, input$zeit_temp_agg)
+
+  df <- all_temp %>%
+    filter(city == input$stadt) %>%
+    mutate(
+      date = as.Date(date),
+      weekday = lubridate::wday(date, label = TRUE, week_start = 1),
+      month = lubridate::month(date),
+      month_label = lubridate::month(date, label = TRUE),
+      quarter_group = factor(case_when(
+        month %% 4 == 1 ~ "M1-4-7-10",
+        month %% 4 == 2 ~ "M2-5-8-11",
+        month %% 4 == 3 ~ "M3-6-9-12",
+        month %% 4 == 0 ~ "M4-8-12-3"  # optional, catch month = 12
+      ), levels = c("M1-4-7-10", "M2-5-8-11", "M3-6-9-12", "M4-8-12-3"))
+    )
+
+  xvar <- switch(input$zeit_temp_agg,
+                 "week" = df$weekday,
+                 "month" = df$month_label,
+                 "quarter" = df$quarter_group)
+
+  ggplot(df, aes(x = xvar, y = temperature)) +
+    geom_point(alpha = 0.2, color = "gray") +
+    stat_summary(aes(group = 1), fun = median, geom = "line", color = "firebrick", linewidth = 1) +
+    labs(
+      title = paste("Temperaturverlauf nach", input$zeit_temp_agg, "in", input$stadt),
+      x = tools::toTitleCase(input$zeit_temp_agg),
+      y = "Temperatur (°C)"
+    ) +
+    theme_minimal()
+})
+```
+
+```{r}
+plotOutput("temp_s_plot")
+```
+
+```{r}
+output$season_plot <- renderPlot({
+df <- all_temp %>%
+    filter(city == input$stadt) %>%
+    mutate(
+      year = year(date),
+      month = month(date, label = TRUE)
+    ) %>%
+    group_by(year, month) %>%
+    summarise(temp_avg = mean(temperature, na.rm = TRUE), .groups = "drop")
+
+  ggplot(df, aes(x = month, y = temp_avg, group = year, color = as.factor(year))) +
+    geom_line() +
+    labs(title = "Saisonale Muster (Monatlich)",
+         x = "Monat", y = "Durchschnittliche Temperatur",
+         color = "Jahr") +
+    theme_minimal()
+})
+
+```
+
+
+Hier ist die bereinigte Saisonalität:
+
+
+```{r}
+output$season_plot_stl <- renderPlot({
+
+  df <- all_temp %>%
+    filter(city == input$stadt) %>%
+    mutate(datetime = as.POSIXct(date)) %>%
+    arrange(datetime)
+
+   ts_temp <- ts(df$temperature, frequency = 365, start = c(2020, 1))  
+
+  plot(stl(ts_temp, s.window = "periodic")$time.series[, "seasonal"],
+       type = "l",
+       col = "darkblue",
+       lwd = 2,
+       main = paste("Saisonale Temperaturkomponente für", input$stadt),
+       xlab = "Tage", ylab = "Saisonalität")
+})
+```
+
+```{r}
+plotOutput("season_plot_stl")
+```
+
+```{r temp_ss_question}
+question("Wie oft wiederholt sich das Temperaturniveau im Verlauf dieser Zeitreihe?",
+  answer("Jede 12 Monate (jährlich)", message = "Richtig! jede Temperaturschwankung folgt einem Jahreszyklus.",correct = TRUE),
+  answer("Vierteljährlich", message = "Nicht ganz."),
+  answer("Wochenlich", message = "Nicht ganz."),
+  answer("Unregelmäßig", message = "Überlege nochmal: Gibt es ein klares, wiederkehrendes Muster?"),
+  allow_retry = TRUE
+)
+```
+
+::: summary
+
+```{r}
+plotOutput("season_plot")
+```
+
+Die Grafik stellt die durchschnittliche monatliche Temperatur in den Jahren 2020 bis 2025 dar. Jede farbige Linie zeigt den Jahresverlauf für ein bestimmtes Jahr. Dabei wird deutlich, dass sich die Temperatur jedes Jahr nach einem ähnlichen Muster verändert
+:::
+
+## Dekomposition
+
+Bevor wir Zeitreihen zerlegen, sollten wir verstehen, wie man eine Zeitreihe mathematisch modellieren kann.
+
+___
+➕ Additives Modell
+
+Im klassischen **additiven Modell** setzen sich die Bestandteile der Zeitreihe unabhängig voneinander zusammen:
+
+\[
+y_t = T_t + S_t + I_t
+\]
+
+- \( y_t \): beobachteter Wert zur Zeit \( t \)  
+- \( T_t \): langfristiger Trend  
+- \( S_t \): saisonale Schwankungen  
+- \( I_t \): irreguläre, zufällige Einflüsse
+
+___
+✖️ Multiplikatives Modell
+
+Wenn sich die Komponenten **gegenseitig beeinflussen**, ist ein **multiplikatives Modell** angemessener:
+
+\[
+y_t = T_t \cdot S_t \cdot I_t
+\]
+
+Hier hängen saisonale und zufällige Abweichungen **proportional vom Trend ** ab.
+
+❗ Grenzen der klassischen Zerlegung
+
+- Keine Trendwerte an Anfang/Ende verfügbar: Der Trend wird mit einem gleitenden Durchschnitt berechnet. Dafür braucht man Werte vor und nach einem Zeitpunkt. Deshalb kann am Rand der Zeitreihe kein Trend berechnet werden
+- Trend-Zyklus ist oft zu glatt: Schnelle Anstiege oder Abfälle werden oft stark geglattet.
+- Saisonale Muster verändern sich langfristig: Klassissche Verfahren gehen davon aus, dass sich das saisonale Muster jedes Jahr gleich wiederholt. In Wirklichkeit ändern sich saisonale Effekte aber oft
+- Empfindlich gegenüber Ausreißern: Die klassische Methode ist gegenüber ungewöhnlichen Werten nicht robust
+
+___
+🔎 STL
+
+Die **STL-Zerlegung** ist eine moderne, flexible und robuste Methode zur Zerlegung von Zeitreihen.  
+STL steht für:
+**S**easonal and **T**rend decomposition using **L**oess
+
+Die STL-Zerlegung ist ausschließlich additiv.
+
+
+🧪 Deine Aufgabe: STL-Zerlegung selbst durchführen
+
+Jetzt bist du dran! Verwende die Funktion `stl()`, um die Temperaturdaten einer Stadt in **Trend**, **Saisonalität** und **Restkomponente** zu zerlegen. Benutze  *s.window = "periodic" *.
+
+💡 **Tipp:** Probiere gern zuerst `ts_tokyo` und `ts_manila` aus und vergleiche die Ergebnisse.  
+➡️ Für die Abgabe trage dann bitte die Lösung mit **`ts_hanoi`** ein.
+
+```{r stl-setup, include=FALSE}
+ts_hanoi <- ts(all_temp %>% filter(city == "Hanoi") %>% pull(temperature),
+               frequency = 365, start = c(2020, 1))
+ts_tokyo <- ts(all_temp %>% filter(city == "Tokyo") %>% pull(temperature),
+               frequency = 365, start = c(2020, 1))
+
+ts_manila <- ts(all_temp %>% filter(city == "Manila") %>% pull(temperature),
+                frequency = 365, start = c(2020, 1))
+```
+
+
+```{r stl_exercise, exercise=TRUE, exercise.setup = "stl-setup"}
+# Es gibt vorbereitete Zeitreihen `ts_hanoi`, `ts_tokyo`, `ts_manila`.
+stl_result <- NULL
+plot(stl_result)
+invisible(stl_result)
+```
+
+```{r stl_exercise-check}
+grade_this({
+  if (!inherits(.result, "stl")) {
+    fail("Bitte definiere `stl_result` mit der Funktion `stl()`.")
+  }
+
+  data_match <- isTRUE(all.equal(head(.result$time.series[, "trend"], 10),
+                                 head(stl(ts_hanoi, s.window = "periodic")$time.series[, "trend"], 10)))
+
+  if (data_match) {
+    pass("Sehr gut! Du hast die Zeitreihe `ts_hanoi` korrekt zerlegt!")
+  } else {
+    fail("Bitte verwende die Zeitreihe `ts_hanoi` für deine Zerlegung.")
+  }
+})
+```
+
+
+___
+️❗In dieser Lernanwendung wird nur die additive STL-Zerlegung behandelt. STL ist eine vielseitige und robuste Methode zur Zerlegung von Zeitreihen, wurde jedoch speziell für additive Modelle entwickelt. Aus Gründen der Klarheit und Fokussierung wird daher auf die additive Variante beschränkt.️
+
+Eine multiplikative Zerlegung lässt sich durch Log-Transformation der Daten und anschließende Rücktransformation der Komponenten durchführen. Zwischenformen von additiven und multiplikativen Zerlegungen können mithilfe der Box-Cox-Transformation realisiert werden.
+
+
+## Auto-Korrelation
+
+In Zeitreihen ist es häufig so, dass der heutige Wert mit vorherigen Werten zusammenhängt. Autokorrelation misst die lineare Beziehung zwischen zeitlich versetzten Werten einer Zeitreihe. 
+
+Hohe Autokorrelationswerte bei bestimmten Lags können auf saisonale Muster oder wiederkehrende Strukturen in den Daten hinweisen.
+
+
+```{r}
+selectInput("stadt_lag", "Stadt auswählen:",
+            choices = unique(all_temp$city),
+            selected = "Hanoi")
+selectInput("lag_days", "Zeitverzögerung (Lag) wählen:",
+            choices = c("1 Tag" = 1,
+                        "1 Woche" = 7,
+                        "1 Monat" = 30,
+                        "1 Quartal" = 90,
+                        "Halbes Jahr" = 182,
+                        "1 Jahr" = 365),
+            selected = 365)
+
+```
+
+```{r}
+
+output$lag_plot <- renderPlot({
+
+  df <- all_temp %>%
+    filter(city == input$stadt_lag) %>%
+    arrange(date) %>%
+    mutate(lagged_temp = lag(temperature, as.integer(input$lag_days)))
+
+  corr_val <- cor(df$temperature, df$lagged_temp, use = "complete.obs")
+
+  ggplot(df, aes(x = lagged_temp, y = temperature)) +
+    geom_point(alpha = 0.3) +
+    geom_smooth(method = "lm", se = FALSE, color = "darkgreen") +
+    labs(
+      title = paste0("Lag-Plot: Temperatur(t) vs. Temperatur(t - k)"),
+      subtitle = paste0("Korrelationswert: ", round(corr_val, 3)),
+      x = "Temperatur bei t - k",
+      y = "Temperatur bei t"
+    ) +
+    theme_minimal()
+})
+
+
+```
+
+```{r}
+plotOutput("lag_plot")
+```
+
+Der y- Wert eines Punktes ist der Wert der Original- Zeitreihe, der x-Wert derjenige der verschobenen Zeitreihe zu einem gewählten Zeitpunkt t-k.
+
+Der Lag-Plot zeigt, wie stark die Temperatur an einem Tag mit der Temperatur k Tage zuvor zusammenhängt.  Ein hoher Korrelationswert zeigt starke Autokorrelation und kann auf ein wiederkehrendes Muster in der Zeitreihe hindeuten. Ein niedriger oder negativer Wert deutet auf schwache oder keine Abhängigkeit.
+
+```{r lag_question}
+question("Bei welchen der folgenden Lags ist die Korrelation in täglichen Temperaturdaten typischerweise hoch? (Tipp: Es gibt **3 richtige Antworten**, bitte alle auswählen.)",
+  answer("Lag 1", correct = TRUE),
+  answer("Lag 7", correct = TRUE),
+  answer("Lag 30", correct = FALSE),
+  answer("Lag 365 (1 Jahr)", correct = TRUE),
+  answer("Lag 90", correct = FALSE),
+  answer("Lag 182 (halbes Jahr)", correct = FALSE),
+  allow_retry = TRUE,
+  random_answer_order = FALSE
+)
+```
+
+
+```{r lag_question_2}
+question("Warum zeigen tägliche Temperaturdaten oft eine starke Korrelation bei Lag = 1 (vor 1 Tag) und 7 (vor 1 Woche), auch ohne echte Saison?",
+  answer("Weil sich die Temperatur über kurze Zeiträume oft nur wenig verändert. Temperatur ändert sich langsam.", correct = TRUE,
+         message = "Genau – das ist eine typische kurzfristige Abhängigkeit."),
+  answer("Weil die Jahreszeiten sich täglich ändern", message = "Nein, das wäre saisonale Veränderung, nicht tägliche Schwankung.")
+)
+```
+
+Zu jedem Lag (also jeder zeitlichen Verschiebung) einer Zeitreihe gehört ein Autokorrelationskoeffizient. Diese einzelnen Koeffizienten ergeben zusammen die Autokorrelationsfunktion (ACF), die angibt, wie stark eine Zeitreihe mit ihren verzögerten Versionen zusammenhängt.
+
+```{r}
+selectInput("stadt_acf", "Städte auswählen:",
+                   choices = unique(all_temp$city),
+                   selected = "Hanoi")
+```
+
+
+```{r}
+output$acf_plot <- renderPlot({
+  acf_plot_data <- all_temp %>%
+  filter(city == input$stadt_acf) %>%
+  arrange(date)
+  
+  acf(acf_plot_data$temperature, lag.max = 733, main = "Autokorrelation")
+})
+```
+
+```{r}
+plotOutput("acf_plot")
+```
+
+Die x-Achse zeigt den Lag (Verzögerung in Tagen). Die y-Achse zeigt den Autokorrelationswert zwischen dem aktuellen Wert und dem um k Tage verschobenen Wert. Die schwarzen Balken zeigen die Korrelation bei jedem Lag.
+
+- Hohe Korrelation bei kleinen Lags (z.B. Lag = 1–30)
+zeigt, dass aufeinanderfolgende Tage ähnliche Temperaturen haben (kurzfristige Abhängigkeit).
+
+- Wellenförmiges Muster
+deutet auf eine regelmäßige Wiederholung hin.
+
+- Korrelation steigt etwa bei Lag = 365 (1 Jahr) und Lag = 730 (2 Jahre) erneut stark an
+klarer Hinweis auf eine jährliche Saisonalität.
+
+
+
+___
+Dieselben Plots wie zuvor wurden unten gezeigt, diesmal jedoch auf monatlicher Basis statt täglich.
+
+🔍 Dadurch wird die jährliche Saisonalität noch deutlicher sichtbar:
+
+
+```{r}
+selectInput("stadt_", "Städte auswählen:",
+                   choices = unique(all_temp$city),
+                   selected = "Hanoi")
+```
+
+```{r}
+output$lag_monthly <- renderPlot({
+  df <- all_temp %>%
+    filter(city == input$stadt_) %>%
+    mutate(
+      date = as.Date(date),
+      year = lubridate::year(date),
+      month = lubridate::month(date)
+    ) %>%
+    group_by(year, month) %>%
+    summarise(temp = mean(temperature, na.rm = TRUE), .groups = "drop") %>%
+    filter(!is.na(temp)) %>%
+    arrange(year, month)
+
+  ts_temp <- ts(df$temp, frequency = 12, start = c(min(df$year), min(df$month)))
+
+  lag.plot(ts_temp, lags = 12, do.lines = FALSE,
+           main = paste("Lag Plot: Monatliche Temperatur in", input$stadt))
+})
+
+
+output$acf_monthly <- renderPlot({
+  df <- all_temp %>%
+    filter(city == input$stadt_) %>%
+    mutate(
+      date = as.Date(date),
+      year = lubridate::year(date),
+      month = lubridate::month(date)
+    ) %>%
+    group_by(year, month) %>%
+    summarise(temp = mean(temperature, na.rm = TRUE), .groups = "drop") %>%
+    filter(!is.na(temp)) %>%
+    arrange(year, month)
+
+  ts_temp <- ts(df$temp, frequency = 12)
+  acf(ts_temp,
+      lag.max = 12,
+      main = paste("ACF: Monatliche Temperatur in", input$stadt_),
+      xaxt = "n")
+  
+  axis(1,
+       at = 0:12 / 12,
+       labels = 0:12,
+       las = 1) 
+})
+
+
+```
+
+```{r}
+plotOutput("lag_monthly")
+```
+
+Im Lag-Plot erkennst du bei Lag = 12 (ein Jahr Abstand) eine starke Punktwolke entlang der Diagonale.
+
+```{r}
+plotOutput("acf_monthly")
+```
+
+Im ACF-Plot zeigt sich ein starker Peak bei Lag = 12. Das bedeutet ein klares Signal für eine Jahreszyklenstruktur.
+
+## Zusammenfassung
+
+#### 🧠 Quizfragen zur Wiederholung
+
+
+```{r wh_question}
+question("Welche Bestandteile kann eine Zeitreihe enthalten?",
+  answer("Trend, Saisonalität, Rest", correct = TRUE),
+  answer("Mittelwert, Median, Modus", message = "Das sind statistische Maße, aber keine Komponenten einer Zeitreihe."),
+  answer("Nur Saisonalität", message = "Es gibt meist mehr als nur ein saisonales Muster."),
+  allow_retry = TRUE
+)
+```
+
+```{r wh_question_2}
+question("Warum ist das einfache Löschen von NAs problematisch?",
+  answer("NAs stören nur die Grafik", message = "Das ist ein Nebeneffekt, aber nicht das Hauptproblem."),
+  answer("NAs sind immer zufällig", message = "Nicht unbedingt, sie können systematisch fehlen."),
+   answer("Es kann wichtige Zeitbezüge zerstören", correct = TRUE),
+  allow_retry = TRUE
+)
+```
+
+
+```{r wh_question_3}
+question("Was passiert mit der Trendlinie, wenn das Fenster (moving average) größer wird?",
+  answer("Sie wird glatter", correct = TRUE),
+  answer("Sie folgt den Datenpunkten genauer", message = "Im Gegenteil: sie reagiert langsamer."),
+  answer("Die Saison wird verstärkt", message = "Glättung entfernt oft saisonale Muster."),
+  allow_retry = TRUE
+)
+```
+
+```{r wh_question_4}
+question("Wie kann man die Länge einer Saisonalität erkennen?",
+  answer("Nur mit Mittelwerten", message = "Mittelwerte zeigen keine Wiederholung über Zeit."),
+  answer("Durch Entfernen des Trends", message = "Das hilft, ist aber nicht allein ausreichend."),
+  answer("Mit ACF und Lag-Plot", correct = TRUE),
+  allow_retry = TRUE
+)
+```
+
+```{r wh_question_5}
+question("Wann ist ein additives Modell besonders sinnvoll?",
+  answer("Wenn die Saisonalität zunimmt mit dem Trend", message = "Das wäre ein Fall für ein multiplikatives Modell."),
+  answer("Wenn die Komponenten unabhängig sind", correct = TRUE),
+  answer("Wenn keine Saisonalität vorliegt", message = "Dann braucht man keine Modellierung."),
+  allow_retry = TRUE
+)
+```
+
+```{r wh_question_6}
+question("Was bedeutet ein starker Peak bei Lag = 12 in der ACF monatlicher Temperaturdaten?",
+  answer("Es gibt eine jährliche Saisonalität", correct = TRUE),
+  answer("Die Daten sind unkorreliert", message = "Ein starker Peak spricht *für* eine Korrelation."),
+  answer("Es gibt nur eine lineare Abhängigkeit", message = "Lag-Korrelationen können auch nichtlinear sein."),
+  allow_retry = TRUE
+)
+```
+
+___
+### 🧠 Was du gelernt hast
+
+| Thema                      | Inhalt                                                               |
+|---------------------------|----------------------------------------------------------------------|
+| 📈 **Zeitreihe verstehen** | Datenpunkte über die Zeit hinweg analysieren                         |
+| 📉 **Trend erkennen**      | Langfristige Entwicklungen sichtbar machen                           |
+| 🔁 **Saisonalität**         | Wiederkehrende Muster wie Jahreszeiten oder                          |
+| ⚙️ **STL-Zerlegung**        | Aufspaltung in Trend, Saison und Rest mit flexibler Zerlegungsmethode |
+| 📊 **Autokorrelation**      | Abhängigkeit eines Werts von vorherigen Zeitpunkten (Lag)            |
+| ❗ **Umgang mit NAs**        | Fehlende Werte identifizieren und sinnvoll ersetzen (z. B. Mittelwert) |
+
+```{r}
+wellPanel(
+  h4("🧾 Entscheidungs-Checkliste"),
+  tags$ul(
+    tags$li("🔽 Trend: Sinkt die Temperatur zu deinem Reisezeitpunkt? ✅ / ❌"),
+    tags$li("🔁 Saisonalität: Zeigt sich ein mildes Jahresmuster? ✅ / ❌"),
+    tags$li("🔺 Extreme: Gibt es viele Ausreißer oder Hitzespitzen? ✅ / ❌"),
+    tags$li("📆 Passender Monat: Gibt es angenehme Temperaturphasen? ✅ / ❌"),
+    tags$li("📍 Ortsvergleich: Ist der Ort stabiler als die Alternativen? ✅ / ❌")
+  )
+)
+```
+
+"Welcher Ort und welcher Zeitraum wären deiner Meinung nach am angenehmsten für die Reise – und warum?"
+
+::: summary
+🎓 Fazit
+
+
+✈️ Du hast gelernt, wie man mit Hilfe von Zeitreihendaten eine fundierte, datengestützte Entscheidung trifft.
+📊 Dieses Wissen kannst du nicht nur für Reisen nutzen, sondern für viele zeitabhängige Probleme von Klima über Energie bis Wirtschaft.
+:::
 
