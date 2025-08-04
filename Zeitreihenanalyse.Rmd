@@ -396,16 +396,16 @@ Die dargestellten Daten zeigen stündlich gemessene E10-Benzinpreise an einer au
 
 Eine der einfachsten Methoden zur Glättung von Zeitreihen besteht in der Berechnung sogenannter gleitender Durchschnitte. Dabei wird versucht, den zugrunde liegenden Trend einer Zeitreihe zu schätzen, indem man lokale Mittelwerte bildet (Fahrmeir et al., 2006).
 
-Ein gleitender Durchschnitt der Ordnung $m$ wird folgendermaßen definiert (Hyndman & Athanasopoulos, 2013):
+Ein gleitender Durchschnitt der Ordnung $m$ wird folgendermaßen definiert (Hyndman & Athanasopoulos, 2021):
 
 $$
 \hat{T}_t = \frac{1}{m} \sum_{j = -k}^{k} y_{t + j}, \quad \text{mit } m = 2k + 1 \
 $$
 
-Dabei wird der Wert der Trend zum Zeitpunkt $t$ als Durchschnitt der Zeitreihenwerte innerhalb eines symmetrischen Fensters von $k$ Perioden um $t$ berechnet. Da benachbarte Zeitpunkte meist ähnliche Werte aufweisen, werden durch diesen Durchschnitt zufällige Schwankungen reduziert. Übrig bleibt eine geglättete Darstellung des langfristigen Trends (Hyndman & Athanasopoulos, 2013).  
+Dabei wird der Wert der Trend zum Zeitpunkt $t$ als Durchschnitt der Zeitreihenwerte innerhalb eines symmetrischen Fensters von $k$ Perioden um $t$ berechnet. Da benachbarte Zeitpunkte meist ähnliche Werte aufweisen, werden durch diesen Durchschnitt zufällige Schwankungen reduziert. Übrig bleibt eine geglättete Darstellung des langfristigen Trends (Hyndman & Athanasopoulos, 2021).  
 
 Man spricht in diesem Fall von einem $m$-MA, also einem gleitenden Durchschnitt der Ordnung $m$.
-(Hyndman & Athanasopoulos, 2013)
+(Hyndman & Athanasopoulos, 2021)
 
 ```{r}
 sliderInput("ma_window", "Fenstergröße (Tage) für gleitenden Durchschnitt:",
@@ -493,7 +493,7 @@ plotlyOutput("loess_plot")
 
 ## Länge einer Saisonalität
 
-In einer Zeitreihe beschreibt die Saisonalität regelmäßig wiederkehrende Muster. Die Länge der Saisonalität gibt an, nach wie vielen Zeitpunkten sich dieses Muster wiederholt.
+In einer Zeitreihe beschreibt die Saisonalität regelmäßig wiederkehrende Muster. Die Länge der Saisonalität gibt an, nach wie vielen Zeitpunkten sich dieses Muster wiederholt (Hyndman & Athanasopoulos, 2021).
 
 ##### Beispiel
 In diesem Diagramm siehst du die durchschnittlichen E10-Preise einer ausgewählten Tankstelle über eine bestimmte zeitliche Auflösung hinweg.
@@ -769,7 +769,7 @@ y_t = T_t \cdot S_t \cdot I_t
 
 Hier hängen saisonale und zufällige Abweichungen **proportional vom Trend ** ab.
 
-❗ Grenzen der klassischen Zerlegung (Hyndman & Athanasopoulos, 2013):
+❗ Grenzen der klassischen Zerlegung (Hyndman & Athanasopoulos, 2021):
 
 - Keine Trendwerte an Anfang/Ende verfügbar: Der Trend wird mit einem gleitenden Durchschnitt berechnet. Dafür braucht man Werte vor und nach einem Zeitpunkt. Deshalb kann am Rand der Zeitreihe kein Trend berechnet werden
 - Trend-Zyklus ist oft zu glatt: Schnelle Anstiege oder Abfälle werden oft stark geglattet.
@@ -779,7 +779,7 @@ Hier hängen saisonale und zufällige Abweichungen **proportional vom Trend ** a
 ___
 🔎 STL
 
-Die **STL-Zerlegung** ist eine moderne, flexible und robuste Methode zur Zerlegung von Zeitreihen (Hyndman & Athanasopoulos, 2013).  
+Die **STL-Zerlegung** ist eine moderne, flexible und robuste Methode zur Zerlegung von Zeitreihen (Hyndman & Athanasopoulos, 2021).  
 STL steht für:
 **S**easonal and **T**rend decomposition using **L**oess
 
@@ -832,12 +832,12 @@ grade_this({
 ___
 ️❗In dieser Lernanwendung wird nur die additive STL-Zerlegung behandelt. STL ist eine vielseitige und robuste Methode zur Zerlegung von Zeitreihen, wurde jedoch speziell für additive Modelle entwickelt. Aus Gründen der Klarheit und Fokussierung wird daher auf die additive Variante beschränkt.️
 
-Eine multiplikative Zerlegung lässt sich durch Log-Transformation der Daten und anschließende Rücktransformation der Komponenten durchführen. Zwischenformen von additiven und multiplikativen Zerlegungen können mithilfe der Box-Cox-Transformation realisiert werden (Hyndman & Athanasopoulos, 2013).
+Eine multiplikative Zerlegung lässt sich durch Log-Transformation der Daten und anschließende Rücktransformation der Komponenten durchführen. Zwischenformen von additiven und multiplikativen Zerlegungen können mithilfe der Box-Cox-Transformation realisiert werden (Hyndman & Athanasopoulos, 2021).
 
 
 ## Auto-Korrelation
 
-In Zeitreihen ist es häufig so, dass der heutige Wert mit vorherigen Werten zusammenhängt. Autokorrelation misst die lineare Beziehung zwischen zeitlich versetzten Werten einer Zeitreihe. Hohe Autokorrelationswerte bei bestimmten Lags können auf saisonale Muster oder wiederkehrende Strukturen in den Daten hinweisen (Hyndman & Athanasopoulos, 2013).
+In Zeitreihen ist es häufig so, dass der heutige Wert mit vorherigen Werten zusammenhängt. Autokorrelation misst die lineare Beziehung zwischen zeitlich versetzten Werten einer Zeitreihe. Hohe Autokorrelationswerte bei bestimmten Lags können auf saisonale Muster oder wiederkehrende Strukturen in den Daten hinweisen (Hyndman & Athanasopoulos, 2021).
 
 
 ```{r}
@@ -887,7 +887,7 @@ plotOutput("lag_plot")
 
 Der y- Wert eines Punktes ist der Wert der Original- Zeitreihe, der x-Wert derjenige der verschobenen Zeitreihe zu einem gewählten Zeitpunkt t-k.
 
-Der Lag-Plot zeigt, wie stark die Temperatur an einem Tag mit der Temperatur k Tage zuvor zusammenhängt.  Ein hoher Korrelationswert zeigt starke Autokorrelation und kann auf ein wiederkehrendes Muster in der Zeitreihe hindeuten. Ein niedriger oder negativer Wert deutet auf schwache oder keine Abhängigkeit.
+Der Lag-Plot zeigt, wie stark die Temperatur an einem Tag mit der Temperatur k Tage zuvor zusammenhängt.  Ein hoher Korrelationswert zeigt starke Autokorrelation und kann auf ein wiederkehrendes Muster in der Zeitreihe hindeuten. Ein niedriger oder negativer Wert deutet auf schwache oder keine Abhängigkeit (Hyndman & Athanasopoulos, 2021).
 
 ```{r lag_question}
 question("Bei welchen der folgenden Lags ist die Korrelation in täglichen Temperaturdaten typischerweise hoch? (Tipp: Es gibt **3 richtige Antworten**, bitte alle auswählen.)",
@@ -1159,7 +1159,7 @@ Dagum, E. B. & Bianconcini, S. (2016). Seasonal Adjustment Methods and Real Time
 
 Fahrmeir, L., Pigeot, I. & Tutz, G. (2006). Statistik: Der Weg zur Datenanalyse. Springer-Verlag.
 
-Hyndman, R. J. & Athanasopoulos, G. (2013). Forecasting: principles and practice.
+Hyndman, R.J., & Athanasopoulos, G. (2021) Forecasting: principles and practice, 3rd edition, OTexts: Melbourne, Australia. OTexts.com/fpp3.
 
 Jose, Jonath. (2022). INTRODUCTION TO TIME SERIES ANALYSIS AND ITS APPLICATIONS. https://www.researchgate.net/publication/362389180_INTRODUCTION_TO_TIME_SERIES_ANALYSIS_AND_ITS_APPLICATIONS
 
