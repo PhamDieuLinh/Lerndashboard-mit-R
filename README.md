@@ -33,15 +33,15 @@ tankerkoenigSoSe2025.csv
 
 ## Fragenbogen
 
-Umfrage: https://docs.google.com/forms/d/1Jg8_xmXv8eV4Zc_cJTuGevfdTvgYp4V6o0QYJQ3yAnE/preview
+Umfrage: https://docs.google.com/forms/d/e/1FAIpQLSfkOXPH_UW_TBGEg7UlM7JR5-tzE-JoCKfqcDT04OejclnmNQ/viewform?usp=preview
 Anworten und Analyse: https://docs.google.com/spreadsheets/d/13laq0_I2temewEeFpi4pCz7jfDxKdFRaqRKdm1HXSGY/edit?usp=sharing
 
 **Sprache:** Deutsch.
 
 ## Datenzugriff 
 
-Die Daten aus den csv Dateien (hanoi_temp.csv, tokyo_temp.csv, manila_temp.csv) wurden selbst aus meteostat.net aufgehoben.
-Die Daten aus den csv Datein (hanoi_w_na.csv, hanoi_w_na1.csv) wurden auch selbst aus meteostat.net aufgehoben und dannach manuell zufällige Werte oder Einträge gelöscht.
+Die Daten aus den csv Dateien (hanoi_temp.csv, tokyo_temp.csv, manila_temp.csv) wurden selbst aus meteostat.net erhoben.
+Die Daten aus den csv Datein (hanoi_w_na.csv, hanoi_w_na1.csv) wurden auch selbst aus meteostat.net erhoben und dannach manuell zufällige Werte oder Einträge gelöscht.
 Die Daten aus tankerkoenigSoSe2025.csv wurden ursprünglich über die API von tankerkoenig.de bezogen und von Manu Muttathu und Martin Spott vorverarbeitet und bereitgestellt.
 
 ## Datenschutz
