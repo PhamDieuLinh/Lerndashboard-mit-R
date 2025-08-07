@@ -96,19 +96,7 @@ Die Datenanalyse fand im 01-03 August 2025 statt.
 
 Die Projektdateien wurden lokal im Rahmen der RStudio-Projektdatei `Lerndashboard Zeitreihenanalyse.Rproj` organisiert.
 
-Lerndashboard Zeitreihenanalyse.Rproj # RStudio-Projektdatei
-Zeitreihenanalyse.Rmd # Hauptskript 
-Course Evaluation (Responses).xlsx # Umfragedaten
-hanoi_temp.csv # Wetterdaten Hanoi (vollständig)
-tokyo_temp.csv # Wetterdaten Tokyo
-manila_temp.csv # Wetterdaten Manila
-hanoi_w_na.csv # Hanoi mit fehlenden Werten (NA)
-hanoi_w_na_1.csv # Weitere Version mit NA
-tankerkoenigSoSe2025.csv # Kraftstoffpreise 
-README.md # Projektdokumentation inkl. DPM
-renv/ # Abhängigkeiten (R-Packages)
-renv.lock # Snapshot der R-Umgebung
-rsconnect/ # Verzeichnis zur Veröffentlichung 
+``` ├── Lerndashboard Zeitreihenanalyse.Rproj # RStudio-Projektdatei ├── Zeitreihenanalyse.Rmd # Hauptskript ├── Course Evaluation (Responses).xlsx # Umfragedaten ├── hanoi_temp.csv # Wetterdaten Hanoi (vollständig) ├── tokyo_temp.csv # Wetterdaten Tokyo ├── manila_temp.csv # Wetterdaten Manila ├── hanoi_w_na.csv # Hanoi mit fehlenden Werten (NA) ├── hanoi_w_na_1.csv # Weitere Version mit NA ├── tankerkoenigSoSe2025.csv # Kraftstoffpreise ├── README.md # Projektdokumentation inkl. DPM ├── renv/ # Abhängigkeiten (R-Packages) ├── renv.lock # Snapshot der R-Umgebung └── rsconnect/ # Verzeichnis zur Veröffentlichung  ```
 
 ## Qualitätssicherungsmaßnahmen
 
