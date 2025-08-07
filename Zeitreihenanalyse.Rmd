@@ -548,9 +548,9 @@ Wähle unterschiedliche zeitliche Auflösungen im Dropdown-Menü oben. Beobachte
 
 ```{r benzin_ss_question}
 question("Zu welcher Tageszeit ist der durchschnittliche E10-Preis am höchsten?",
-  answer("Am frühen Morgen (ca. 5–6 Uhr)", correct = TRUE, message = "Richtig – es gibt einen deutlichen Preisanstieg am Morgen."),
-  answer("Mittags", message = "Nicht ganz – der Preis sinkt mittags eher leicht."),
-  answer("Am späten Abend (ca. 22–23 Uhr)", message = "Nicht ganz – der Preis steigt abends, aber nicht so stark."),
+  answer("Am frühen Morgen (ca. 5–6 Uhr)", correct = TRUE, message = "Richtig! Es gibt einen deutlichen Preisanstieg am Morgen."),
+  answer("Mittags", message = "Nicht ganz, der Preis sinkt mittags eher leicht."),
+  answer("Am späten Abend (ca. 22–23 Uhr)", message = "Nicht ganz, der Preis steigt abends, aber nicht so stark."),
   random_answer_order = TRUE,
   allow_retry = TRUE
 )
@@ -559,7 +559,7 @@ question("Zu welcher Tageszeit ist der durchschnittliche E10-Preis am höchsten?
 
 ```{r benzin_ss_question_2}
 question("Wie häufig wiederholt sich das saisonale Muster?",
-  answer("Jeden Tag", correct = TRUE, message = "Richtig – die Preisstruktur wiederholt sich innerhalb von 24 Stunden."),
+  answer("Jeden Tag", correct = TRUE, message = "Richtig! Die Preisstruktur wiederholt sich innerhalb von 24 Stunden."),
   answer("Jede Woche"),
   answer("Einmal pro Monat"),
   allow_retry = TRUE
@@ -569,7 +569,7 @@ question("Wie häufig wiederholt sich das saisonale Muster?",
 ```{r benzin_ss_question_3}
 question("Welche Art von Saisonalität erkennst du in der Grafik?",
   answer("Tägliche Saisonalität", correct = TRUE, message = "Richtig! Die Preisschwankungen folgen einem Tagesmuster."),
-  answer("Wöchentliche Saisonalität", message = "Nicht in dieser Grafik – wir sehen Schwankungen innerhalb eines Tages."),
+  answer("Wöchentliche Saisonalität", message = "Nicht in dieser Grafik. Wir sehen Schwankungen innerhalb eines Tages."),
   answer("Monatliche Saisonalität", message = "Das ist hier nicht dargestellt."),
   allow_retry = TRUE
 )
@@ -595,7 +595,7 @@ output$benzin_plot_2 <- renderPlotly({
 
   stl_result <- stl(ts_price, s.window = "periodic")
   seasonal <- stl_result$time.series[, "seasonal"]
-  seasonal_subset <- seasonal[1:(7 * 24)]  # first 7 days (24 hours * 7)
+  seasonal_subset <- seasonal[1:(7 * 24)]  
 
   plot_ly(
     x = 1:(7 * 24),
@@ -906,12 +906,12 @@ question("Bei welchen der folgenden Lags ist die Korrelation in täglichen Tempe
 ```{r lag_question_2}
 question("Warum zeigen tägliche Temperaturdaten oft eine starke Korrelation bei Lag = 1 (vor 1 Tag) und 7 (vor 1 Woche), auch ohne echte Saison?",
   answer("Weil sich die Temperatur über kurze Zeiträume oft nur wenig verändert. Temperatur ändert sich langsam.", correct = TRUE,
-         message = "Genau – das ist eine typische kurzfristige Abhängigkeit."),
+         message = "Genau! Das ist eine typische kurzfristige Abhängigkeit."),
   answer("Weil die Jahreszeiten sich täglich ändern", message = "Nein, das wäre saisonale Veränderung, nicht tägliche Schwankung.")
 )
 ```
 
-Zu jedem Lag (also jeder zeitlichen Verschiebung) einer Zeitreihe gehört ein Autokorrelationskoeffizient. Diese einzelnen Koeffizienten ergeben zusammen die Autokorrelationsfunktion (ACF), die angibt, wie stark eine Zeitreihe mit ihren verzögerten Versionen zusammenhängt.
+Zu jedem Lag (also jeder zeitlichen Verschiebung) einer Zeitreihe gehört ein Autokorrelationskoeffizient. Diese einzelnen Koeffizienten ergeben zusammen die Autokorrelationsfunktion (ACF), die angibt, wie stark eine Zeitreihe mit ihren verzögerten Versionen zusammenhängt (Hyndman & Athanasopoulos, 2021).
 
 ```{r}
 selectInput("stadt_acf", "Städte auswählen:",
