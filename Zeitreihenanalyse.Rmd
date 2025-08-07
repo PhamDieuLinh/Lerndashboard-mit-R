@@ -1176,6 +1176,9 @@ Müller K, Wickham H (2025). tibble: Simple Data Frames. R package version 3.3.0
 
 Pratama, I., Permanasari, A. E., Ardiyanto, I. & Indrayani, R. (o. D.). A review of missing values handling methods on time-series data. 2016 International Conference On Information Technology Systems And Innovation (ICITSI), Bandung, Indonesia. https://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=7858189
 
+Datensätze aus meteostat.net und tankerkoenig.de
+
+
 
 
 
