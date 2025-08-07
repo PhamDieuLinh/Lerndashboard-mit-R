@@ -5,7 +5,7 @@ account: phdlinh
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 15079416
-bundleId: 10742520
+bundleId: 10742699
 url: https://phdlinh.shinyapps.io/Zeitreihenanalyse/
 version: 1
 asMultiple: FALSE
