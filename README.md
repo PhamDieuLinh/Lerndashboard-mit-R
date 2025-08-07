@@ -4,7 +4,8 @@
 
 **Authorin:**
 Dieu Linh Pham
-Masterstudiengang Wirtschaftsinformatik
+
+Bachelorstudiengang Wirtschaftsinformatik
 
 **Betreurer:**
 Prof. Dr. Martin Spott
