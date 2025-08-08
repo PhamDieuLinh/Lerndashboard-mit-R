@@ -209,8 +209,8 @@ Zu den einfachen Methoden gehören das Ignorieren der fehlenden Werte, das Lösc
 question("Was passiert, wenn du NA-Zeilen einfach aus einer Zeitreihe entfernst?",
     answer("Es kann zu Verzerrungen in der Analyse führen", correct = TRUE,
          message = "Richtig! Ignorieren und Löschen zeigen sich oft als ungeeignet, da sie zu Verlusten an Informationsgehalt und einer Verschlechterung der Analyseergebnisse führen können (Pratama et al., 2016)."),
-  answer("Das Löschen verbessert die Genauigkeit", message = "Ganz im Gegenteil — es kann die Genauigkeit verringern."),
-  answer("Fehlende Werte beeinflussen Zeitreihenmodelle nicht", message = "Doch – Zeitreihenmodelle setzen oft vollständige Daten voraus."),
+  answer("Das Löschen verbessert die Genauigkeit", message = "Ganz im Gegenteil. Es kann die Genauigkeit verringern."),
+  answer("Fehlende Werte beeinflussen Zeitreihenmodelle nicht", message = "Doch. Zeitreihenmodelle setzen oft vollständige Daten voraus."),
   allow_retry = TRUE
 )
 ```
@@ -1073,7 +1073,7 @@ question("Wann ist ein additives Modell besonders sinnvoll?",
 ```{r wh_question_6}
 question("Was bedeutet ein starker Peak bei Lag = 12 in der ACF monatlicher Temperaturdaten?",
   answer("Es gibt eine jährliche Saisonalität", correct = TRUE),
-  answer("Die Daten sind unkorreliert", message = "Ein starker Peak spricht *für* eine Korrelation."),
+  answer("Die Daten sind unkorreliert", message = "Ein starker Peak spricht für eine Korrelation."),
   answer("Es gibt nur eine lineare Abhängigkeit", message = "Lag-Korrelationen können auch nichtlinear sein."),
   allow_retry = TRUE
 )
