@@ -1,7 +1,7 @@
 ---
 title: "Zeitreihenanalyse"
 author: Dieu Linh Pham
-date: "`r format(Sys.time(), '%d.%m.%Y')`"
+date: "07.08.2025"
 runtime: shiny_prerendered
 output: 
   learnr::tutorial
