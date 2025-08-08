@@ -81,7 +81,9 @@ Es werden keine personenbezogenen Daten verarbeitet oder gespeichert.
 
 ## Zeitraum
 
-Dashboardentwicklung: Juni-Juli 2025
+Dashboardentwicklung: Juni-Juli 2025.
+
+Die Lernanwendung wurde im Zeitraum Juni–Juli 2025 erstellt und fertiggestellt. Das auf der Anwendung angezeigte Standarddatum 07.08.2025 bezieht sich auf einen technischen Aktualisierungszeitpunkt (z. B. Quellenangaben ergänzt oder Rechtschreibfehler korrigiert). Inhalte blieben gegenüber der ursprünglichen Version unverändert.
 
 Die Umfrage wurden am 21.07.2025 bis 29.07.2025 durchgeführt.
 
